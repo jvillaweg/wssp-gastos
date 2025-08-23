@@ -1,0 +1,13 @@
+version = 0.1.0
+[build-system]
+requires = ["aws-sam-cli"]
+
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "wssp-expense-tracker"
+s3_bucket = "wssp-deployment-artifacts"  # Create this bucket
+capabilities = "CAPABILITY_IAM"
+region = "us-east-1"
+confirm_changeset = false
+fail_on_empty_changeset = false
