@@ -33,6 +33,18 @@ jobs:
         aws s3api head-bucket --bucket wssp-deployment-artifacts 2>/dev/null || \
         aws s3 mb s3://wssp-deployment-artifacts --region us-east-1
 
+    - name: Check and delete failed stack
+      run: |
+        STACK_STATUS=$(aws cloudformation describe-stacks --stack-name wssp-expense-tracker --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "NONE")
+        if [ "$STACK_STATUS" = "ROLLBACK_COMPLETE" ] || [ "$STACK_STATUS" = "CREATE_FAILED" ] || [ "$STACK_STATUS" = "UPDATE_ROLLBACK_COMPLETE" ]; then
+          echo "Stack is in failed state ($STACK_STATUS), deleting..."
+          aws cloudformation delete-stack --stack-name wssp-expense-tracker
+          aws cloudformation wait stack-delete-complete --stack-name wssp-expense-tracker
+          echo "Stack deleted successfully"
+        else
+          echo "Stack status: $STACK_STATUS"
+        fi
+
     - name: SAM deploy
       run: |
         sam deploy --no-confirm-changeset --no-fail-on-empty-changeset \
