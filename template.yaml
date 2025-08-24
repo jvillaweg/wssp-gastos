@@ -184,7 +184,7 @@ Resources:
         WebhookGet:
           Type: Api
           Properties:
-            Path: /webhook/meta
+            Path: /webhook/meta/whatsapp
             Method: get
         WebhookPost:
           Type: Api
@@ -208,6 +208,9 @@ Resources:
             Method: get
 
 Outputs:
-  WebhookUrl:
-    Description: "API Gateway endpoint URL"
+  WebhookVerifyUrl:
+    Description: "WhatsApp webhook verification URL (GET)"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/webhook/meta/whatsapp"
+  WebhookEventUrl:
+    Description: "WhatsApp webhook event URL (POST)"
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/webhook/meta"
