@@ -28,6 +28,11 @@ jobs:
     - name: SAM build
       run: sam build
     
+    - name: Create S3 bucket if not exists
+      run: |
+        aws s3api head-bucket --bucket wssp-deployment-artifacts 2>/dev/null || \
+        aws s3 mb s3://wssp-deployment-artifacts --region us-east-1
+
     - name: SAM deploy
       run: |
         sam deploy --no-confirm-changeset --no-fail-on-empty-changeset \
