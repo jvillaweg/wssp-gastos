@@ -60,7 +60,7 @@ def healthz():
 def report_summary(user_id: int, range: str, db: DBSession = Depends(get_db)):
     # Get user expenses for range
     # ...existing code...
-    return {"summary": "..."}
+    return {"summary": "...."}
 
 @app.get("/export/csv")
 def export_csv(user_id: int, month: str = None, db: DBSession = Depends(get_db)):
