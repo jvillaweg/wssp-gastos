@@ -38,11 +38,14 @@ Resources:
   # RDS PostgreSQL Free Tier Instance
   PostgreSQLInstance:
     Type: AWS::RDS::DBInstance
+    DependsOn: 
+      - DatabaseSubnetGroup
+      - DatabaseSecurityGroup
     Properties:
-      DBInstanceIdentifier: wssp-postgres-free
+      DBInstanceIdentifier: !Sub "wssp-postgres-${AWS::StackName}"
       DBInstanceClass: db.t3.micro  # Free tier eligible
       Engine: postgres
-      EngineVersion: '15.4'
+      EngineVersion: '15.7'
       DBName: wssp
       MasterUsername: postgres
       MasterUserPassword: !Ref DatabasePassword
@@ -139,6 +142,9 @@ Resources:
       SubnetIds:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
+      Tags:
+        - Key: Name
+          Value: wssp-db-subnet-group
 
   DatabaseSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -158,7 +164,7 @@ Resources:
       VpcId: !Ref VPC
       SecurityGroupEgress:
         - IpProtocol: -1
-          CidrBlock: 0.0.0.0/0
+          CidrIp: 0.0.0.0/0
 
   WhatsAppExpenseAPI:
     Type: AWS::Serverless::Function
