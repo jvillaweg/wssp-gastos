@@ -20,7 +20,7 @@ class SessionManager:
 
     def handle_onboarding(self, user: User, session: Session, message: str):
         if not self.has_consent(user):
-            if message.strip().lower() == "sí":
+            if message.strip().lower() in ["sí", "si"]:
                 self.grant_consent(user)
                 self.send_message(user.phone_e164, ONBOARDING_NAME_PROMPT)
                 session.state = "ONBOARDING_NAME"

@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request, HTTPException, Depends
+from fastapi.responses import PlainTextResponse
 from app.models import User, Consent, Session, UserRole, RoleEnum
 from app.database import get_db
 from app.message_handler import MessageHandler
@@ -17,10 +18,24 @@ def verify_signature(request: Request, body: bytes):
     expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
     return signature == f"sha256={expected}"
 
-@app.get("/webhook/meta")
-def webhook_verify(hub_mode: str = None, hub_challenge: str = None, hub_verify_token: str = None):
-    if hub_mode == "subscribe" and hub_verify_token == VERIFY_TOKEN:
-        return int(hub_challenge)
+@app.get("/webhook/meta/whatsapp", response_class=PlainTextResponse)
+async def verify_webhook(mode: str | None = None,
+                         hub_mode: str | None = None,   # por si Meta envía como hub.mode (depende del proxy)
+                         challenge: str | None = None,
+                         hub_challenge: str | None = None,
+                         token: str | None = None,
+                         hub_verify_token: str | None = None):
+    """
+    Meta envía query params:
+      hub.mode, hub.verify_token, hub.challenge
+    Algunos proxies renombran llaves; por eso aceptamos variantes.
+    """
+    mode = mode or hub_mode or ""
+    verify_token = token or hub_verify_token or ""
+    challenge_val = challenge or hub_challenge or ""
+
+    if mode == "subscribe" and verify_token == VERIFY_TOKEN:
+        return challenge_val
     raise HTTPException(status_code=403, detail="Verification failed")
 
 @app.post("/webhook/meta")
