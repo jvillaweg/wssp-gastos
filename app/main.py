@@ -19,27 +19,27 @@ def verify_signature(request: Request, body: bytes):
     return signature == f"sha256={expected}"
 
 @app.get("/webhook/meta", response_class=PlainTextResponse)
-async def verify_webhook(hub_mode: str | None = None,
-                         hub_verify_token: str | None = None,
-                         hub_challenge: str | None = None,
-                         mode: str | None = None,
-                         token: str | None = None,
-                         challenge: str | None = None):
-    # Aceptar ambas variantes por si algún proxy renombra las keys
-    mode = hub_mode or mode or ""
-    verify_token = hub_verify_token or token or ""
-    challenge_val = hub_challenge or challenge or ""
-
+async def verify_webhook(request: Request):
+    """
+    Handle WhatsApp webhook verification.
+    Meta sends: hub.mode, hub.verify_token, hub.challenge
+    """
+    params = request.query_params
+    
+    mode = params.get("hub.mode", "")
+    verify_token = params.get("hub.verify_token", "")
+    challenge = params.get("hub.challenge", "")
+    
     # Debug logging (remove in production)
-    print(f"Received: mode='{mode}', verify_token='{verify_token}', challenge='{challenge_val}'")
+    print(f"Received: mode='{mode}', verify_token='{verify_token}', challenge='{challenge}'")
     print(f"Expected token: '{VERIFY_TOKEN}'")
     print(f"Token match: {verify_token == VERIFY_TOKEN}")
+    print(f"All params: {dict(params)}")
 
-    if mode == "subscribe" and verify_token == VERIFY_TOKEN and challenge_val:
-        # Debe ser texto plano, sin comillas
-        return PlainTextResponse(content=challenge_val, status_code=200)
+    if mode == "subscribe" and verify_token == VERIFY_TOKEN and challenge:
+        return PlainTextResponse(content=challenge, status_code=200)
     
-    raise HTTPException(status_code=403, detail=f"Verification failed. Mode: {mode}, Token provided: {verify_token != ''}")
+    raise HTTPException(status_code=403, detail=f"Verification failed. Mode: '{mode}', Token match: {verify_token == VERIFY_TOKEN}")
     raise HTTPException(status_code=403, detail="Verification failed")
 
 @app.post("/webhook/meta")
