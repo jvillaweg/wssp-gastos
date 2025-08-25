@@ -56,7 +56,7 @@ Resources:
       DBSubnetGroupName: !Ref DatabaseSubnetGroup
       BackupRetentionPeriod: 7
       DeletionProtection: false
-      PubliclyAccessible: false
+      PubliclyAccessible: true
       MultiAZ: false  # Single AZ for free tier
 
   # VPC for RDS
@@ -155,28 +155,14 @@ Resources:
         - IpProtocol: tcp
           FromPort: 5432
           ToPort: 5432
-          SourceSecurityGroupId: !Ref LambdaSecurityGroup
-
-  LambdaSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Security group for Lambda
-      VpcId: !Ref VPC
-      SecurityGroupEgress:
-        - IpProtocol: -1
           CidrIp: 0.0.0.0/0
+          Description: Allow Lambda access from outside VPC
 
   WhatsAppExpenseAPI:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: .
       Handler: lambda_handler.handler
-      VpcConfig:
-        SecurityGroupIds:
-          - !Ref LambdaSecurityGroup
-        SubnetIds:
-          - !Ref PublicSubnet1
-          - !Ref PublicSubnet2
       Environment:
         Variables:
           DATABASE_URL: !Sub 'postgresql://postgres:${DatabasePassword}@${PostgreSQLInstance.Endpoint.Address}:5432/wssp'
