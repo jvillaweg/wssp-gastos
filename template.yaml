@@ -184,7 +184,7 @@ Resources:
         WebhookGet:
           Type: Api
           Properties:
-            Path: /webhook/meta/whatsapp
+            Path: /webhook/meta
             Method: get
         WebhookPost:
           Type: Api
