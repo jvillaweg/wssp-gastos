@@ -1,8 +1,15 @@
-# Alembic migration for new tables
+"""Initial database setup with user handling tables
+
+Revision ID: 20250811_user_handling
+Revises: 
+Create Date: 2025-08-11 00:00:00.000000
+
+"""
 from alembic import op
 import sqlalchemy as sa
 import enum
 
+# revision identifiers, used by Alembic.
 revision = '20250811_user_handling'
 down_revision = None
 branch_labels = None
@@ -12,7 +19,7 @@ class RoleEnum(enum.Enum):
     user = "user"
     admin = "admin"
 
-def upgrade():
+def upgrade() -> None:
     op.create_table(
         'users',
         sa.Column('user_id', sa.Integer, primary_key=True),
@@ -51,7 +58,7 @@ def upgrade():
         sa.Column('role', sa.Enum(RoleEnum), default=RoleEnum.user),
     )
 
-def downgrade():
+def downgrade() -> None:
     op.drop_table('user_roles')
     op.drop_table('sessions')
     op.drop_table('consents')
