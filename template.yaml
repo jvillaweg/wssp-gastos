@@ -210,7 +210,7 @@ Resources:
 Outputs:
   WebhookVerifyUrl:
     Description: "WhatsApp webhook verification URL (GET)"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/webhook/meta/whatsapp"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/webhook/meta"
   WebhookEventUrl:
     Description: "WhatsApp webhook event URL (POST)"
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/webhook/meta"

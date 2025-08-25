@@ -18,24 +18,21 @@ def verify_signature(request: Request, body: bytes):
     expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
     return signature == f"sha256={expected}"
 
-@app.get("/webhook/meta/whatsapp", response_class=PlainTextResponse)
-async def verify_webhook(mode: str | None = None,
-                         hub_mode: str | None = None,   # por si Meta envía como hub.mode (depende del proxy)
-                         challenge: str | None = None,
+@app.get("/webhook/meta", response_class=PlainTextResponse)
+async def verify_webhook(hub_mode: str | None = None,
+                         hub_verify_token: str | None = None,
                          hub_challenge: str | None = None,
+                         mode: str | None = None,
                          token: str | None = None,
-                         hub_verify_token: str | None = None):
-    """
-    Meta envía query params:
-      hub.mode, hub.verify_token, hub.challenge
-    Algunos proxies renombran llaves; por eso aceptamos variantes.
-    """
-    mode = mode or hub_mode or ""
-    verify_token = token or hub_verify_token or ""
-    challenge_val = challenge or hub_challenge or ""
+                         challenge: str | None = None):
+    # Aceptar ambas variantes por si algún proxy renombra las keys
+    mode = hub_mode or mode or ""
+    verify_token = hub_verify_token or token or ""
+    challenge_val = hub_challenge or challenge or ""
 
-    if mode == "subscribe" and verify_token == VERIFY_TOKEN:
-        return challenge_val
+    if mode == "subscribe" and verify_token == VERIFY_TOKEN and challenge_val:
+        # Debe ser texto plano, sin comillas
+        return PlainTextResponse(content=challenge_val, status_code=200)
     raise HTTPException(status_code=403, detail="Verification failed")
 
 @app.post("/webhook/meta")
