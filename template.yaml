@@ -158,6 +158,13 @@ Resources:
           CidrIp: 0.0.0.0/0
           Description: Allow Lambda access from outside VPC
 
+  # Temporary - will remove in next deployment
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Temporary security group for Lambda (unused)
+      VpcId: !Ref VPC
+
   WhatsAppExpenseAPI:
     Type: AWS::Serverless::Function
     Properties:
