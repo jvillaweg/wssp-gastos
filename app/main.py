@@ -34,16 +34,17 @@ async def verify_webhook(request: Request):
         return PlainTextResponse(content=challenge, status_code=200)
     
     raise HTTPException(status_code=403, detail="Verification failed")
-    raise HTTPException(status_code=403, detail="Verification failed")
 
 @app.post("/webhook/meta")
 async def webhook_event(request: Request, db: DBSession = Depends(get_db)):
     body = await request.body()
+    print(request)
     if not verify_signature(request, body):
         raise HTTPException(status_code=403, detail="Invalid signature")
     
     event_data = json.loads(body)
-    
+    print(event_data)
+
     # Parse WhatsApp webhook format
     if "entry" in event_data:
         for entry in event_data["entry"]:
