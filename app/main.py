@@ -30,9 +30,16 @@ async def verify_webhook(hub_mode: str | None = None,
     verify_token = hub_verify_token or token or ""
     challenge_val = hub_challenge or challenge or ""
 
+    # Debug logging (remove in production)
+    print(f"Received: mode='{mode}', verify_token='{verify_token}', challenge='{challenge_val}'")
+    print(f"Expected token: '{VERIFY_TOKEN}'")
+    print(f"Token match: {verify_token == VERIFY_TOKEN}")
+
     if mode == "subscribe" and verify_token == VERIFY_TOKEN and challenge_val:
         # Debe ser texto plano, sin comillas
         return PlainTextResponse(content=challenge_val, status_code=200)
+    
+    raise HTTPException(status_code=403, detail=f"Verification failed. Mode: {mode}, Token provided: {verify_token != ''}")
     raise HTTPException(status_code=403, detail="Verification failed")
 
 @app.post("/webhook/meta")
