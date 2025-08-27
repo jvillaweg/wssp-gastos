@@ -3,8 +3,10 @@ from fastapi.responses import PlainTextResponse
 from app.models import User, Consent, Session, UserRole, RoleEnum
 from app.database import get_db
 from app.message_handler import MessageHandler
+from app.webhook_events import WhatsAppWebhookEvent, MessageEvent, StatusEvent
 from sqlalchemy.orm import Session as DBSession
 from datetime import datetime, timedelta
+from pydantic import ValidationError
 import hmac, hashlib, os, json
 
 app = FastAPI()
@@ -38,31 +40,61 @@ async def verify_webhook(request: Request):
 @app.post("/webhook/meta")
 async def webhook_event(request: Request, db: DBSession = Depends(get_db)):
     body = await request.body()
-    print(request)
     if not verify_signature(request, body):
         raise HTTPException(status_code=403, detail="Invalid signature")
     
-    event_data = json.loads(body)
-    print(event_data)
-
-    # Parse WhatsApp webhook format
-    if "entry" in event_data:
-        for entry in event_data["entry"]:
-            if "changes" in entry:
-                for change in entry["changes"]:
-                    if change.get("field") == "messages":
-                        value = change.get("value", {})
-                        if "messages" in value:
-                            for message in value["messages"]:
-                                # Extract message data
-                                event = {
-                                    "from": message.get("from"),
-                                    "message_id": message.get("id"),
-                                    "text": message.get("text", {}).get("body", "")
-                                }
-                                # Handle message
-                                handler = MessageHandler(db)
-                                handler.handle(event)
+    try:
+        # Parse JSON data
+        event_data = json.loads(body)
+        print(f"Raw webhook data: {event_data}")
+        
+        # Create WhatsApp webhook event object
+        webhook_event = WhatsAppWebhookEvent(**event_data)
+        
+        # Process message events
+        for message_data in webhook_event.get_message_events():
+            # Create MessageEvent object
+            message_event = MessageEvent(**message_data)
+            
+            # Handle message
+            handler = MessageHandler(db)
+            # Convert back to dict format for handler compatibility
+            event_dict = {
+                "from": message_event.from_,
+                "message_id": message_event.message_id,
+                "text": message_event.text,
+                "type": "message"
+            }
+            handler.handle(event_dict)
+        
+        # Process status events
+        for status_data in webhook_event.get_status_events():
+            # Create StatusEvent object
+            status_event = StatusEvent(**status_data)
+            
+            print(f"Message status update: {status_event.message_id} -> {status_event.status}")
+            
+            # Log additional information if available
+            if status_event.conversation:
+                print(f"  Conversation: {status_event.conversation['id']}")
+            
+            if status_event.pricing:
+                pricing = status_event.pricing
+                print(f"  Pricing: {pricing['category']} - Billable: {pricing['billable']}")
+            
+            # You can add status handling logic here
+            # For example, update message delivery status in database
+            # handler.handle_status(status_event)
+            
+    except ValidationError as e:
+        print(f"Validation error parsing webhook data: {e}")
+        raise HTTPException(status_code=400, detail=f"Invalid webhook data: {e}")
+    except json.JSONDecodeError as e:
+        print(f"JSON decode error: {e}")
+        raise HTTPException(status_code=400, detail="Invalid JSON data")
+    except Exception as e:
+        print(f"Unexpected error processing webhook: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
     
     return {"status": "ok"}
 
