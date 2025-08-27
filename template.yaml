@@ -140,8 +140,8 @@ Resources:
     Properties:
       DBSubnetGroupDescription: Subnet group for RDS PostgreSQL
       SubnetIds:
-        - !Ref PrivateSubnet1
-        - !Ref PrivateSubnet2
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
       Tags:
         - Key: Name
           Value: wssp-db-subnet-group
