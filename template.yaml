@@ -94,21 +94,6 @@ Resources:
       AvailabilityZone: !Select [1, !GetAZs '']
       MapPublicIpOnLaunch: true
 
-  # Private subnets for RDS
-  PrivateSubnet1:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.3.0/24
-      AvailabilityZone: !Select [0, !GetAZs '']
-
-  PrivateSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.4.0/24
-      AvailabilityZone: !Select [1, !GetAZs '']
-
   # Route table for public subnets
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
