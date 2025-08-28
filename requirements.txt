@@ -6,3 +6,4 @@ requests
 alembic
 mangum
 uvicorn
+dotenv

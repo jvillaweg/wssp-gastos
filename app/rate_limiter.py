@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 import collections
 
 class RateLimiter:
@@ -8,7 +8,7 @@ class RateLimiter:
         self.window_seconds = 300
 
     def check(self, user_id):
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         window = self.user_windows[user_id]
         # Remove old timestamps
         self.user_windows[user_id] = [t for t in window if (now - t).total_seconds() < self.window_seconds]
@@ -17,6 +17,3 @@ class RateLimiter:
         self.user_windows[user_id].append(now)
         return True
 
-    def abuse(self, user_id):
-        # If user consistently exceeds, trigger block
-        ...

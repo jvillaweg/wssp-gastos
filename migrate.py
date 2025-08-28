@@ -6,15 +6,20 @@ import os
 import sys
 from alembic.config import Config
 from alembic import command
+from dotenv import load_dotenv
 
 def run_migrations():
     """Run pending database migrations"""
+    # Load environment variables from .env file
+    load_dotenv()
+    
     # Set up Alembic config
     alembic_cfg = Config("alembic.ini")
     
     # Override database URL if provided via environment
     if os.getenv("DATABASE_URL"):
         alembic_cfg.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL"))
+        print(f"Using database: {os.getenv('DATABASE_URL')}")
     
     try:
         print("Running database migrations...")

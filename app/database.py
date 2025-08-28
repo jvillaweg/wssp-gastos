@@ -1,19 +1,41 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Database connection with connection pooling for Lambda
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Optimized for Lambda - smaller pool, shorter timeouts
-engine = create_engine(
-    DATABASE_URL,
-    pool_size=1,
-    max_overflow=0,
-    pool_timeout=10,
-    pool_recycle=3600,
-    pool_pre_ping=True
-)
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL environment variable is not set")
+
+# Check if running locally vs Lambda
+is_lambda = os.getenv("AWS_LAMBDA_FUNCTION_NAME") is not None
+
+if is_lambda:
+    # Optimized for Lambda - smaller pool, shorter timeouts
+    engine = create_engine(
+        DATABASE_URL,
+        pool_size=1,
+        max_overflow=0,
+        pool_timeout=10,
+        pool_recycle=3600,
+        pool_pre_ping=True
+    )
+else:
+    # Optimized for local development - persistent connections
+    engine = create_engine(
+        DATABASE_URL,
+        pool_size=5,
+        max_overflow=10,
+        pool_timeout=30,
+        pool_recycle=1800,  # 30 minutes
+        pool_pre_ping=True,
+        echo=False  # Set to True for SQL debugging
+    )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

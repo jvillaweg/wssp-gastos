@@ -4,8 +4,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 # Replace <your_phone_number_id> with actual phone number ID from Meta
-META_API_URL = f"https://graph.facebook.com/v18.0/{os.getenv('META_PHONE_NUMBER_ID')}/messages"
+META_API_URL = f"https://graph.facebook.com/v23.0/{os.getenv('META_PHONE_NUMBER_ID')}/messages"
 META_TOKEN = os.getenv("META_ACCESS_TOKEN")
 
 class WhatsAppSender:
@@ -24,7 +29,6 @@ class WhatsAppSender:
             }
             # Add timeout to prevent hanging
             resp = requests.post(META_API_URL, headers=headers, json=payload, timeout=5)
-            logger.info(f"✅ Message sent successfully to {phone_e164}")
             return resp.json()
         except requests.exceptions.ConnectTimeout:
             logger.warning(f"⚠️ Timeout sending message to {phone_e164} - Lambda VPC has no internet access")
