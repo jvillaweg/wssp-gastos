@@ -77,7 +77,7 @@ class MessageStrategy:
             description=description,
             currency=currency,
             raw_text=text,
-            chat_text="not implemented"
+            chat_id="not implemented"
         )
         self.db.add(expense)
         if tags:
