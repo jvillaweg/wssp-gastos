@@ -42,12 +42,11 @@ class MessageStrategy:
         return f"Tag '{name}' creado."
     
     def handle_expense(self, text: str) -> str:
-        tags = None
         parsed_text = text.strip().lower()
         cuerpo: str
         cuerpo, tags = self.split_text_and_tag(parsed_text)
+        tag_objs = []
         if tags:
-            tag_objs = []
             for tag in tags:
                 tag_obj = self.db.query(Tag).filter_by(name=tag).first()
                 if not tag_obj:
