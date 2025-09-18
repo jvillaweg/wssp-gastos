@@ -157,7 +157,6 @@ Resources:
     Properties:
       CodeUri: .
       Handler: lambda_handler.handler
-      ReservedConcurrencyLimit: 3  # Limit concurrent executions  
       Environment:
         Variables:
           DATABASE_URL: !Sub 'postgresql://postgres:${DatabasePassword}@${PostgreSQLInstance.Endpoint.Address}:5432/wssp'
