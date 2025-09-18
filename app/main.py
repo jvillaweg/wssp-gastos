@@ -71,3 +71,8 @@ async def webhook_event(request: Request, db: DBSession = Depends(get_db)):
 def healthz():
     return {"status": "ok"}
 
+@app.get("/ping")
+def ping():
+    """Lightweight ping endpoint for warming up Lambda"""
+    return {"status": "warm", "timestamp": datetime.now().isoformat()}
+

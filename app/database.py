@@ -21,9 +21,13 @@ if is_lambda:
         DATABASE_URL,
         pool_size=1,
         max_overflow=0,
-        pool_timeout=10,
-        pool_recycle=3600,
-        pool_pre_ping=True
+        pool_timeout=5,        # Reduced from 10
+        pool_recycle=1800,     # 30 minutes
+        pool_pre_ping=True,
+        connect_args={
+            "connect_timeout": 5,
+            "application_name": "wssp-lambda"
+        }
     )
 else:
     # Optimized for local development - persistent connections

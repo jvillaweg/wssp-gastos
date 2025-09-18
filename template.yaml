@@ -5,8 +5,10 @@ Description: WhatsApp Expense Tracker
 Globals:
   Function:
     Timeout: 30
-    MemorySize: 512
+    MemorySize: 1024  # Increased from 512MB
     Runtime: python3.11
+    Architectures:
+      - arm64  # Use ARM64 for better performance/cost
     Environment:
       Variables:
         META_VERIFY_TOKEN: !Ref MetaVerifyToken
@@ -155,6 +157,7 @@ Resources:
     Properties:
       CodeUri: .
       Handler: lambda_handler.handler
+      ReservedConcurrencyLimit: 3  # Limit concurrent executions  
       Environment:
         Variables:
           DATABASE_URL: !Sub 'postgresql://postgres:${DatabasePassword}@${PostgreSQLInstance.Endpoint.Address}:5432/wssp'
@@ -184,6 +187,18 @@ Resources:
           Properties:
             Path: /export/csv
             Method: get
+        WarmUp:
+          Type: Schedule
+          Properties:
+            Schedule: rate(10 minutes)  # Keep warm every 10 minutes (was 5)
+            Input: |
+              {
+                "httpMethod": "GET",
+                "path": "/ping",
+                "headers": {
+                  "User-Agent": "CloudWatch-Warmer"
+                }
+              }
 
 Outputs:
   WebhookVerifyUrl:
