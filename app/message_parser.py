@@ -18,7 +18,7 @@ class MessageStrategy:
         elif code == "tags":
             return self.list_tags()
         elif code in ("cat", "category", "categoria", "categories", "categorias"):
-            return "Funcionalidad de categorías no implementada aún."
+            return self.list_categories()
         else:
             self.handle_expense(parsed_text)
 
