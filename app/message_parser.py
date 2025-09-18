@@ -86,7 +86,7 @@ class MessageStrategy:
         return f"gasto de {currency}{price} en la categoría '{category_obj}' con tags {', '.join(tag.name for tag in tag_objs)} registrado."
 
 
-    def split_text_and_tag(texto: str) -> Tuple[str, Optional[List[str]]]:
+    def split_text_and_tag(self, texto: str) -> Tuple[str, Optional[List[str]]]:
         """
         Separa el texto de una o más etiquetas con @ al final.
         Retorna (texto_sin_tags, tags) como tupla.
