@@ -14,7 +14,7 @@ class MessageStrategy:
         # Basic parsing logic; can be extended as needed
         parsed_text = text.strip().lower()
         items = parsed_text.split()
-        code = items[0]
+        code = items[0].lower()
         if code == "ct":
             self.create_tag(items[1])
         elif code == "tags":
