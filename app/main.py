@@ -51,7 +51,7 @@ async def webhook_event(request: Request, db: DBSession = Depends(get_db)):
             message_event = MessageEvent(**message_data)
             
             handler = MessageHandler(db)
-            handler.handle(message_event)
+            handler.handle(message_event, raw_payload=event_data)
             
     except ValidationError as e:
         print(f"Validation error parsing webhook data: {e}")
