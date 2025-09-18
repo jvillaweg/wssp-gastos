@@ -27,7 +27,7 @@ class MessageHandler:
         user.last_seen_at = datetime.now(timezone.utc)
         self.db.commit()
 
-        response = MessageStrategy(user).handle_message(text)
+        response = MessageStrategy(self.db, user).handle_message(text)
         WhatsAppSender.send_message(phoneNumber, response)
 
     def get_or_create_user(self, phoneNumber):

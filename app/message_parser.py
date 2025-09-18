@@ -4,8 +4,8 @@ from app.database import get_db
 from app.models import Category, Expense, Tag, User
 
 class MessageStrategy:
-    def __init__(self, user: User):
-        self.db = next(get_db())
+    def __init__(self, db, user: User):
+        self.db = db
         self.user = user
     
     def handle_message(self, text: str) -> None:
