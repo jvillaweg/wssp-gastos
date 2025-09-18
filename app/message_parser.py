@@ -1,7 +1,5 @@
 import re
-from typing import List, Optional
-
-from sqlalchemy import Tuple
+from typing import List, Optional, Tuple
 from app.database import get_db
 from app.models import Category, Expense, Tag, User
 
@@ -56,7 +54,7 @@ class MessageStrategy:
         currency = "CLP"
         if ("," in price) or ("." in price):
             price = price.replace(",", ".")
-            price = float(price)
+            price = float(price + "0")
             currency = "USD"
         else:
             price = int(price)
