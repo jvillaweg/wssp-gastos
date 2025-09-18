@@ -14,7 +14,7 @@ class MessageHandler:
         phoneNumber = event.from_
         message_id = event.message_id
         text: str = event.text
-        
+        print(f"Received message from {phoneNumber}:\n {raw_payload}")
         # Check if we've already processed this message (idempotency)
         existing_log = self.db.query(MessageLog).filter_by(
             provider="meta",
