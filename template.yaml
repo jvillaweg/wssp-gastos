@@ -189,15 +189,9 @@ Resources:
         WarmUp:
           Type: Schedule
           Properties:
-            Schedule: rate(10 minutes)  # Keep warm every 10 minutes (was 5)
-            Input: |
-              {
-                "httpMethod": "GET",
-                "path": "/ping",
-                "headers": {
-                  "User-Agent": "CloudWatch-Warmer"
-                }
-              }
+            Schedule: rate(10 minutes)  # Keep warm every 10 minutes
+            Name: WarmUpLambda
+            Description: Keep Lambda function warm to reduce cold starts
 
 Outputs:
   WebhookVerifyUrl:
