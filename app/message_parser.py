@@ -84,7 +84,7 @@ class MessageStrategy:
                 expense.tags.append(tag)
         self.db.commit()
         tag_text = f"con tags {', '.join(tag.name for tag in tag_objs)}" if tag_objs else "sin tags"
-        return f"gasto de {currency}{price} en la categoría '{category_obj}' {tag_text} registrado."
+        return f"Gasto de {currency} {price} en la categoría '{category_obj}' {tag_text} registrado."
 
 
     def split_text_and_tag(self, texto: str) -> Tuple[str, Optional[List[str]]]:
