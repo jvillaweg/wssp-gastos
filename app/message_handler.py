@@ -1,5 +1,5 @@
 from app.rate_limiter import RateLimiter
-from app.models import User
+from app.models import Expense, User
 from app.wa_sender import WhatsAppSender
 from app.webhook_events import MessageEvent
 
@@ -26,7 +26,8 @@ class MessageHandler:
         user.last_seen_at = datetime.now(timezone.utc)
         self.db.commit()
 
-
+        parsed_text = text.strip().lower()
+        items = parsed_text.split()
         
 
 

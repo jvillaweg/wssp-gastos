@@ -189,6 +189,7 @@ class Category(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     is_system: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     emoji: Mapped[Optional[str]] = mapped_column(String(8))
+    short_name: Mapped[Optional[str]] = mapped_column(String(48))
 
     parent: Mapped[Optional[Category]] = relationship(
         remote_side="Category.id", back_populates="children"
@@ -199,6 +200,9 @@ class Category(Base, TimestampMixin):
 
     expenses: Mapped[list[Expense]] = relationship(back_populates="category")
 
+    def __str__(self):
+        parent_name = f"{self.parent.name} > " if self.parent else ""
+        return f"{parent_name}{self.name}"
 
 # ---------- Merchant & Payment ----------
 
@@ -327,6 +331,12 @@ class Tag(Base, TimestampMixin):
         back_populates="tags",
         lazy="selectin",
     )
+
+    def __str__(self):
+        return self.name
+    
+    def __repr__(self):
+        return f"<Tag(name={self.name})>"
 
 
 class ExpenseTag(Base):

@@ -29,5 +29,9 @@ def run_migrations():
         print(f"❌ Migration failed: {e}")
         sys.exit(1)
 
+
+#alembic revision --autogenerate -m "description of change"
+# python migrate.py
+
 if __name__ == "__main__":
     run_migrations()
