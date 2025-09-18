@@ -17,8 +17,15 @@ class MessageStrategy:
             self.create_tag(items[1])
         elif code == "tags":
             return self.list_tags()
+        elif code in ("cat", "category", "categoria", "categories", "categorias"):
+            return "Funcionalidad de categorías no implementada aún."
         else:
             self.handle_expense(parsed_text)
+
+    def list_categories(self) -> str:
+        categories = self.db.query(Category).all()
+        category_names = [f"{category.name} codigo {category.short_name}" for category in categories]
+        return "Categorías existentes:\n" + ",\n".join(category_names) if category_names else "No hay categorías existentes."
 
     def list_tags(self) -> str:
         tags = self.db.query(Tag).all()
