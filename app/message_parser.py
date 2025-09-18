@@ -20,7 +20,7 @@ class MessageStrategy:
         elif code in ("cat", "category", "categoria", "categories", "categorias"):
             return self.list_categories()
         else:
-            self.handle_expense(parsed_text)
+            return self.handle_expense(parsed_text)
 
     def list_categories(self) -> str:
         categories = self.db.query(Category).all()
