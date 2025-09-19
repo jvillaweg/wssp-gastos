@@ -138,7 +138,7 @@ class MessageStrategy:
                 expense.tags.append(tag)
         self.db.commit()
         text = f"💰 *Gasto en proceso:* \n{expense}"
-        WhatsAppSender.send_interactive_message(self.user.phone, text, expense.id)
+        WhatsAppSender.send_confirm_interaction(self.user.phone, text, expense.id)
 
     def split_text_and_tag(self, texto: str) -> Tuple[str, Optional[List[str]]]:
         """

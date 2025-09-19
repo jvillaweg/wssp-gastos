@@ -38,7 +38,7 @@ class WhatsAppSender:
             return {"error": str(e)}
         
     @staticmethod
-    def send_interactive_message(phone_e164: str, body: str, expense_id:int):
+    def send_confirm_interaction(phone_e164: str, body: str, expense_id:int):
         try:
             headers = {
                 "Authorization": f"Bearer {META_TOKEN}",
