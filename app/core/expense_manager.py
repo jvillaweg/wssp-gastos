@@ -86,7 +86,9 @@ class ExpenseManager:
         category = items[1] if len(items) > 1 else "x"
         description = " ".join(items[2:]) if len(items) > 2 else "No description"
 
-        category_obj = self.db.query(Category).filter_by(short_name=category).first()
+        category_obj = self.db.query(Category).filter(
+            (Category.short_name.ilike(category)) | (Category.name.ilike(category))
+        ).first()
 
         # Create expense
         expense = Expense(

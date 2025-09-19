@@ -147,7 +147,7 @@ Envía: `[monto] [categoría] [descripción] [fecha] [@etiquetas]`
 
 📂 *Categorías:*
 • Ver todas: `cat` o `categorias`
-• Usar código corto en el gasto
+• Usar código corto o nombre en el gasto
 
 ✅ *Confirmación:*
 Después de enviar un gasto, recibirás botones para *Confirmar* o *Rechazar*.
@@ -157,4 +157,4 @@ Después de enviar un gasto, recibirás botones para *Confirmar* o *Rechazar*.
 • Las fechas sin año asumen el año actual
 • Los montos con decimales se consideran USD
 
-¿Necesitas ayuda? Envía `tutorial` nuevamente."""
+¡Empieza a registrar tus gastos ahora! 💸"""
