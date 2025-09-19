@@ -37,6 +37,9 @@ class MessageHandler:
         self.db.commit()
         
         try:
+            # Start transaction for message processing
+            self.db.begin()
+            
             # Lookup/create user
             user = self.get_or_create_user(phoneNumber)
             if not self.rate_limiter.check(user.id):
@@ -52,7 +55,6 @@ class MessageHandler:
                 return
             # Update last_seen_at
             user.last_seen_at = datetime.now(timezone.utc)
-            self.db.commit()
 
             handler = MessageStrategy(self.db, user)
 
@@ -64,13 +66,22 @@ class MessageHandler:
 
             # Mark message as successfully processed
             message_log.status = "processed"
+            
+            # Commit all changes atomically
             self.db.commit()
             
         except Exception as e:
-            # Mark message as failed
-            message_log.status = "failed"
-            message_log.error = str(e)
-            self.db.commit()
+            # Rollback all changes if anything fails
+            self.db.rollback()
+            
+            # Mark message as failed in a separate transaction
+            try:
+                message_log.status = "failed"
+                message_log.error = str(e)
+                self.db.commit()
+            except Exception as log_error:
+                print(f"Failed to log error: {log_error}")
+                
             WhatsAppSender.send_message(phoneNumber, "Ocurrió un error procesando tu mensaje. Intenta nuevamente.")
             raise
 
