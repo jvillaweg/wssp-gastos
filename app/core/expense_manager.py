@@ -99,7 +99,7 @@ class ExpenseManager:
             currency=currency,
             raw_text=text,
             chat_id=self.user.phone,
-            expense_date=date_str if date_str else datetime.date.today().isoformat(),
+            expense_date=date_str,
         )
         self.db.add(expense)
         

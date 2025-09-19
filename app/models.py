@@ -319,7 +319,7 @@ class Expense(Base, TimestampMixin):
     )
 
     def __str__(self):
-        text = f"""💵 Monto: *CLP {self.amount}*
+        text = f"""💵 Monto: *{self.currency} {self.amount}*
 📁 Categoría: *{self.category}*
 📝 Descripción: *{self.description}*
 🏷️ Etiquetas: *{', '.join(tag.name for tag in self.tags) if self.tags else "Sin etiquetas"}*
