@@ -1,19 +1,34 @@
 import re
-from typing import List, Optional, Tuple
-from app.database import get_db
-from app.models import Category, Expense, Tag, User
-from app.wa_sender import WhatsAppSender
-from app.webhook_events import Interactive
 import datetime
+from typing import List, Optional, Tuple
+from app.models import Category, Expense, User
+from app.core.tag_manager import TagManager
+from app.services.whatsapp_service import WhatsAppService
+from app.webhooks.models import Interactive
 
 
-class MessageStrategy:
+class ExpenseManager:
+    """Handles expense-related operations and business logic."""
+    
     def __init__(self, db, user: User):
         self.db = db
         self.user = user
-
-    def handle_interactive(self, interactive: Interactive) -> None:
-        # Handle interactive messages
+        self.tag_manager = TagManager(db)
+    
+    def list_categories(self) -> str:
+        """List all available categories."""
+        categories = self.db.query(Category).all()
+        category_names = [
+            f"{category.name} codigo {category.short_name}" for category in categories
+        ]
+        return (
+            "Categorías existentes:\n" + ",\n".join(category_names)
+            if category_names
+            else "No hay categorías existentes."
+        )
+    
+    def handle_interactive_response(self, interactive: Interactive) -> None:
+        """Handle interactive button responses for expense confirmation/rejection."""
         if interactive.type == "button_reply" and interactive.button_reply:
             button_id: str = interactive.button_reply.id
             instruction, id_str = button_id.split("_", 1)
@@ -25,7 +40,7 @@ class MessageStrategy:
             )
 
             if not expense:
-                WhatsAppSender.send_message(
+                WhatsAppService.send_message(
                     self.user.phone, "❌ No se encontró el gasto solicitado."
                 )
                 return
@@ -33,95 +48,47 @@ class MessageStrategy:
             if instruction == "confirm":
                 expense.status = "confirmed"
                 self.db.commit()
-
                 message = f"✅ *¡Gasto confirmado exitosamente!*\n{expense}\n\n¡Tu gasto ha sido registrado correctamente! 💫"
 
             elif instruction == "decline":
                 expense.status = "rejected"
                 self.db.commit()
-
-                # Beautiful rejection message
                 message = f"❌ *Gasto rechazado:*\n{expense}\n\nEl gasto ha sido rechazado y no se guardará en tus registros."
             else:
                 message = f"⚠️ Acción no reconocida: {instruction}"
 
-            WhatsAppSender.send_message(self.user.phone, message)
-
-    def handle_message(self, text: str) -> None:
-        # Basic parsing logic; can be extended as needed
-        parsed_text = text.strip().lower()
-        items = parsed_text.split()
-        code = items[0].lower()
-        response = None
-        if code == "ct":
-            response = self.create_tag(items[1])
-        elif code in ("tags", "etiquetas"):
-            response = self.list_tags()
-        elif code in ("cat", "category", "categoria", "categories", "categorias"):
-            response = self.list_categories()
-        else:
-            self.handle_expense(parsed_text)
-        if response:
-            WhatsAppSender.send_message(self.user.phone, response)
-
-    def list_categories(self) -> str:
-        categories = self.db.query(Category).all()
-        category_names = [
-            f"{category.name} codigo {category.short_name}" for category in categories
-        ]
-        return (
-            "Categorías existentes:\n" + ",\n".join(category_names)
-            if category_names
-            else "No hay categorías existentes."
-        )
-
-    def list_tags(self) -> str:
-        tags = self.db.query(Tag).all()
-        tag_names = [tag.name for tag in tags]
-        return (
-            "Etiquetas existentes:\n" + ",\n".join(tag_names)
-            if tag_names
-            else "No hay etiquetas existentes."
-        )
-
-    def create_tag(self, name: str) -> str:
-        existing = self.db.query(Tag).filter_by(name=name).first()
-        if existing:
-            return f"Etiqueta '{name}' ya existe."
-        tag = Tag(name=name)
-        self.db.add(tag)
-        self.db.commit()
-        return f"Etiqueta '{name}' creada."
-
-    def handle_expense(self, text: str) -> None:
+            WhatsAppService.send_message(self.user.phone, message)
+    
+    def create_expense_from_text(self, text: str) -> None:
+        """Process expense creation from text message."""
         parsed_text = text.strip().lower()
         cuerpo: str
-        cuerpo, tags = self.split_text_and_tag(parsed_text)
-        cuerpo, date_str = self.extract_date(cuerpo)
+        cuerpo, tags = self._split_text_and_tag(parsed_text)
+        cuerpo, date_str = self._extract_date(cuerpo)
+        
+        # Handle tags
         tag_objs = []
         if tags:
-            for tag in tags:
-                tag_obj = self.db.query(Tag).filter_by(name=tag).first()
-                if not tag_obj:
-                    tag_obj = Tag(name=tag)
-                    self.db.add(tag_obj)
-                tag_objs.append(tag_obj)
-            self.db.commit()
+            tag_objs = self.tag_manager.get_or_create_tags(tags)
 
+        # Parse expense details
         items = cuerpo.split()
         price = items[0]
         currency = "CLP"
+        
         if ("," in price) or ("." in price):
             price = price.replace(",", ".")
             price = float(price + "0")
             currency = "USD"
         else:
             price = int(price)
+            
         category = items[1] if len(items) > 1 else "x"
         description = " ".join(items[2:]) if len(items) > 2 else "No description"
 
         category_obj = self.db.query(Category).filter_by(short_name=category).first()
 
+        # Create expense
         expense = Expense(
             user_id=self.user.id,
             amount=price,
@@ -133,14 +100,18 @@ class MessageStrategy:
             expense_date=date_str if date_str else datetime.date.today().isoformat(),
         )
         self.db.add(expense)
+        
+        # Add tags
         if tags:
             for tag in tag_objs:
                 expense.tags.append(tag)
         self.db.commit()
-        text = f"💰 *Gasto en proceso:* \n{expense}"
-        WhatsAppSender.send_confirm_interaction(self.user.phone, text, expense.id)
-
-    def split_text_and_tag(self, texto: str) -> Tuple[str, Optional[List[str]]]:
+        
+        # Send confirmation message with buttons
+        confirmation_text = f"💰 *Gasto en proceso:* \n{expense}"
+        WhatsAppService.send_confirm_interaction(self.user.phone, confirmation_text, expense.id)
+    
+    def _split_text_and_tag(self, texto: str) -> Tuple[str, Optional[List[str]]]:
         """
         Separa el texto de una o más etiquetas con @ al final.
         Retorna (texto_sin_tags, tags) como tupla.
@@ -152,7 +123,7 @@ class MessageStrategy:
         cuerpo = re.sub(r"\s*@([^\s]+)", "", texto).strip()
         return cuerpo, tags if tags else None
     
-    def extract_date(self, text: str) -> Tuple[str, Optional[str]]:
+    def _extract_date(self, text: str) -> Tuple[str, Optional[str]]:
         """
         Extracts a date from the text in formats:
         dd/mm/yyyy, dd-mm-yyyy, dd/mm/yy, dd-mm-yy, dd/mm, dd-mm
@@ -191,6 +162,3 @@ class MessageStrategy:
                 except ValueError:
                     continue
         return text, datetime.datetime.now().isoformat()
-    
-
-

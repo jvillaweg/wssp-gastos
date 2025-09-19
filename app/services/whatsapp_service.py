@@ -13,9 +13,13 @@ load_dotenv()
 META_API_URL = f"https://graph.facebook.com/v23.0/{os.getenv('META_PHONE_NUMBER_ID')}/messages"
 META_TOKEN = os.getenv("META_ACCESS_TOKEN")
 
-class WhatsAppSender:
+
+class WhatsAppService:
+    """Service for sending WhatsApp messages via Meta Business API."""
+    
     @staticmethod
     def send_message(phone_e164: str, text: str):
+        """Send a simple text message."""
         try:
             headers = {
                 "Authorization": f"Bearer {META_TOKEN}",
@@ -38,7 +42,8 @@ class WhatsAppSender:
             return {"error": str(e)}
         
     @staticmethod
-    def send_confirm_interaction(phone_e164: str, body: str, expense_id:int):
+    def send_confirm_interaction(phone_e164: str, body: str, expense_id: int):
+        """Send an interactive message with confirm/reject buttons."""
         try:
             headers = {
                 "Authorization": f"Bearer {META_TOKEN}",
@@ -55,7 +60,7 @@ class WhatsAppSender:
                         "buttons": [
                             {"type": "reply", "reply": {"id": f"confirm_{expense_id}", "title": "Confirmar"}},
                             {"type": "reply", "reply": {"id": f"decline_{expense_id}", "title": "Rechazar"}}
-                            ]
+                        ]
                     }
                 }
             }
@@ -68,4 +73,3 @@ class WhatsAppSender:
         except Exception as e:
             logger.error(f"❌ Error sending interactive message to {phone_e164}: {e}")
             return {"error": str(e)}
-        

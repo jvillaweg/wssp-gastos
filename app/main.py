@@ -1,11 +1,9 @@
 from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.responses import PlainTextResponse
 from app.database import get_db
-from app.message_handler import MessageHandler
-from app.webhook_events import WhatsAppWebhookEvent, MessageEvent, StatusEvent
+from app.handlers.webhook_handler import WebhookHandler
 from sqlalchemy.orm import Session as DBSession
-from datetime import datetime, timedelta
-from pydantic import ValidationError
+from datetime import datetime
 import hmac, hashlib, os, json
 from dotenv import load_dotenv
 
@@ -44,27 +42,12 @@ async def webhook_event(request: Request, db: DBSession = Depends(get_db)):
     
     try:
         event_data = json.loads(body)        
-        webhook_event = WhatsAppWebhookEvent(**event_data)
+        webhook_handler = WebhookHandler(db)
+        return webhook_handler.process_webhook(event_data)
         
-        for message_data in webhook_event.get_message_events():
-            message_event = MessageEvent(**message_data)
-            
-            handler = MessageHandler(db)
-            handler.handle(message_event, raw_payload=event_data)
-            
-    except ValidationError as e:
-        print(f"Validation error parsing webhook data: {e}")
-        raise HTTPException(status_code=400, detail=f"Invalid webhook data: {e}")
     except json.JSONDecodeError as e:
         print(f"JSON decode error: {e}")
         raise HTTPException(status_code=400, detail="Invalid JSON data")
-    except Exception as e:
-        import traceback
-        print(f"Unexpected error processing webhook: {e}")
-        print(f"Full traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail="Internal server error")
-    
-    return {"status": "ok"}
 
 @app.get("/healthz")
 def healthz():
