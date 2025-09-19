@@ -43,8 +43,7 @@ async def webhook_event(request: Request, db: DBSession = Depends(get_db)):
         raise HTTPException(status_code=403, detail="Invalid signature")
     
     try:
-        event_data = json.loads(body)
-        
+        event_data = json.loads(body)        
         webhook_event = WhatsAppWebhookEvent(**event_data)
         
         for message_data in webhook_event.get_message_events():

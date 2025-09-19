@@ -14,8 +14,6 @@ class MessageHandler:
         phoneNumber = event.from_
         message_id = event.message_id
         text: str = event.text
-        print(f"Received message from {phoneNumber}:\n {raw_payload}")
-        # Check if we've already processed this message (idempotency)
         existing_log = self.db.query(MessageLog).filter_by(
             provider="meta",
             provider_message_id=message_id
@@ -56,9 +54,14 @@ class MessageHandler:
             user.last_seen_at = datetime.now(timezone.utc)
             self.db.commit()
 
-            response = MessageStrategy(self.db, user).handle_message(text)
-            WhatsAppSender.send_message(phoneNumber, response)
-            
+            handler = MessageStrategy(self.db, user)
+
+            if event.type == "interactive" and event.interactive:
+                handler.handle_interactive(event.interactive)
+            else: 
+                response = handler.handle_message(text)
+                WhatsAppSender.send_message(phoneNumber, response)
+
             # Mark message as successfully processed
             message_log.status = "processed"
             self.db.commit()

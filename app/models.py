@@ -318,6 +318,10 @@ class Expense(Base, TimestampMixin):
         lazy="selectin",
     )
 
+    def __str__(self):
+        tags = f" tags [{' '.join(tag.name for tag in self.tags)}]" if self.tags else ""
+        return f"{self.currency} {self.amount} - {self.description or 'No description'}{tags}"
+
 
 class Tag(Base, TimestampMixin):
     __tablename__ = "tag"

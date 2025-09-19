@@ -44,6 +44,17 @@ class MessageStatus(BaseModel):
     errors: Optional[List[Dict[str, Any]]] = None
 
 
+
+
+class ButtonReply(BaseModel):
+    """Represents a button reply in an interactive message."""
+    id: str
+    title: str
+class Interactive(BaseModel):
+    """Represents an interactive message element."""
+    type: str
+    button_reply: Optional[ButtonReply] = None
+
 class WhatsAppMessage(BaseModel):
     """Represents a single WhatsApp message from the webhook."""
     id: str = Field(alias="id")
@@ -51,7 +62,8 @@ class WhatsAppMessage(BaseModel):
     timestamp: Optional[str] = None
     type: Optional[str] = None
     text: Optional[MessageText] = None
-    
+    interactive: Optional[Interactive] = None
+
     class Config:
         populate_by_name = True
 
@@ -108,8 +120,11 @@ class WhatsAppWebhookEvent(BaseModel):
                 "from": message.from_,
                 "message_id": message.id,
                 "text": message.text.body if message.text else "",
-                "type": "message"
+                "type": message.type,
+
             }
+            if message.type == "interactive" and message.interactive:
+                event["interactive"] = message.interactive
             events.append(event)
         return events
     
@@ -153,6 +168,7 @@ class MessageEvent(BaseModel):
     text: str
     timestamp: Optional[datetime] = None
     type: str = "message"
+    interactive: Optional[Interactive] = None
     
     class Config:
         populate_by_name = True

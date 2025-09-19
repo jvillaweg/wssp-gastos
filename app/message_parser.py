@@ -2,46 +2,113 @@ import re
 from typing import List, Optional, Tuple
 from app.database import get_db
 from app.models import Category, Expense, Tag, User
+from app.wa_sender import WhatsAppSender
+from app.webhook_events import Interactive
+
 
 class MessageStrategy:
     def __init__(self, db, user: User):
         self.db = db
         self.user = user
-    
+
+    def handle_interactive(self, interactive: Interactive) -> None:
+        # Handle interactive messages
+        if interactive.type == "button_reply" and interactive.button_reply:
+            button_id: str = interactive.button_reply.id
+            instruction, id_str = button_id.split("_", 1)
+            expense_id = int(id_str)
+            expense: Expense = (
+                self.db.query(Expense)
+                .filter_by(id=expense_id, user_id=self.user.id)
+                .first()
+            )
+
+            if not expense:
+                WhatsAppSender.send_message(
+                    self.user.phone, "❌ No se encontró el gasto solicitado."
+                )
+                return
+
+            if instruction == "confirm":
+                expense.status = "confirmed"
+                self.db.commit()
+
+                # Beautiful confirmation message
+                category_name = (
+                    str(expense.category) if expense.category else "Sin categoría"
+                )
+
+                message = f"""✅ *¡Gasto confirmado exitosamente!*
+
+💰 Monto: *{expense.currency} {expense.amount:,.0f}*
+📁 Categoría: *{category_name}*
+📝 Descripción: {expense.description}
+🏷️ Etiquetas: {', '.join(tag.name for tag in expense.tags) if expense.tags else "Sin etiquetas"}
+📅 Fecha: {expense.expense_date.strftime('%d/%m/%Y %H:%M')}
+
+¡Tu gasto ha sido registrado correctamente! 💫"""
+
+            elif instruction == "decline":
+                expense.status = "rejected"
+                self.db.commit()
+
+                # Beautiful rejection message
+                message = f"""❌ *Gasto rechazado*
+
+El gasto de *{expense.currency} {expense.amount:,.0f}* ha sido rechazado y no se guardará en tus registros.
+"""
+            else:
+                message = f"⚠️ Acción no reconocida: {instruction}"
+
+            WhatsAppSender.send_message(self.user.phone, message)
+
     def handle_message(self, text: str) -> None:
         # Basic parsing logic; can be extended as needed
         parsed_text = text.strip().lower()
         items = parsed_text.split()
         code = items[0].lower()
+        response = None
         if code == "ct":
-            self.create_tag(items[1])
-        elif code == "tags":
-            return self.list_tags()
+            response = self.create_tag(items[1])
+        elif code in ("tags", "etiquetas"):
+            response = self.list_tags()
         elif code in ("cat", "category", "categoria", "categories", "categorias"):
-            return self.list_categories()
+            response = self.list_categories()
         else:
-            return self.handle_expense(parsed_text)
+            self.handle_expense(parsed_text)
+        if response:
+            WhatsAppSender.send_message(self.user.phone, response)
 
     def list_categories(self) -> str:
         categories = self.db.query(Category).all()
-        category_names = [f"{category.name} codigo {category.short_name}" for category in categories]
-        return "Categorías existentes:\n" + ",\n".join(category_names) if category_names else "No hay categorías existentes."
+        category_names = [
+            f"{category.name} codigo {category.short_name}" for category in categories
+        ]
+        return (
+            "Categorías existentes:\n" + ",\n".join(category_names)
+            if category_names
+            else "No hay categorías existentes."
+        )
 
     def list_tags(self) -> str:
         tags = self.db.query(Tag).all()
         tag_names = [tag.name for tag in tags]
-        return "Tags existentes:\n" + ",\n".join(tag_names) if tag_names else "No hay tags existentes."
+        return (
+            "Etiquetas existentes:\n" + ",\n".join(tag_names)
+            if tag_names
+            else "No hay etiquetas existentes."
+        )
 
     def create_tag(self, name: str) -> str:
         existing = self.db.query(Tag).filter_by(name=name).first()
         if existing:
-            return f"Tag '{name}' ya existe."
+            return f"Etiqueta '{name}' ya existe."
         tag = Tag(name=name)
         self.db.add(tag)
         self.db.commit()
-        return f"Tag '{name}' creado."
-    
-    def handle_expense(self, text: str) -> str:
+        return f"Etiqueta '{name}' creada."
+
+    def handle_expense(self, text: str) -> None:
         parsed_text = text.strip().lower()
         cuerpo: str
         cuerpo, tags = self.split_text_and_tag(parsed_text)
@@ -76,16 +143,22 @@ class MessageStrategy:
             description=description,
             currency=currency,
             raw_text=text,
-            chat_id=self.user.phone
+            chat_id=self.user.phone,
         )
         self.db.add(expense)
         if tags:
             for tag in tag_objs:
                 expense.tags.append(tag)
         self.db.commit()
-        tag_text = f"con tags {', '.join(tag.name for tag in tag_objs)}" if tag_objs else "sin tags"
-        return f"Gasto de {currency} {price} en la categoría '{category_obj}' {tag_text} registrado."
+        text = f"""
+        💰 Gasto en proceso:
 
+💵 Monto: CLP *{price}*
+📁 Categoría: *{category_obj}*
+📝 Descripción: {description}
+🏷️ Etiquetas: {', '.join(tag.name for tag in expense.tags) if expense.tags else "Sin etiquetas"}
+        """
+        WhatsAppSender.send_interactive_message(self.user.phone, text, expense.id)
 
     def split_text_and_tag(self, texto: str) -> Tuple[str, Optional[List[str]]]:
         """
