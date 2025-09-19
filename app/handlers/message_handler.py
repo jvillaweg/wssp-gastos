@@ -115,8 +115,46 @@ class MessageHandler:
         elif code in ("cat", "category", "categoria", "categories", "categorias"):
             expense_manager = ExpenseManager(self.db, user)
             return expense_manager.list_categories()
+        elif code in ("tutorial", "ayuda", "help"):
+            return self._get_tutorial_text()
         else:
             # Handle expense creation
             expense_manager = ExpenseManager(self.db, user)
             expense_manager.create_expense_from_text(parsed_text)
             return None  # Expense handling sends its own messages
+    
+    def _get_tutorial_text(self) -> str:
+        """Return tutorial text explaining how to use the app."""
+        return """📚 *¡Bienvenido al Bot de Gastos!*
+
+🎯 *Cómo registrar un gasto:*
+Envía: `[monto] [categoría] [descripción] [fecha] [@etiquetas]`
+
+📝 *Ejemplos:*
+• `15000 comida almuerzo` - Gasto básico
+• `25000 transporte uber 15/03` - Con fecha
+• `8500 comida café @trabajo` - Con etiqueta
+• `12.50 comida sandwich` - En USD (con decimales)
+
+📅 *Formatos de fecha:*
+• `15/03` o `15-03` (día/mes del año actual)
+• `15/03/2024` o `15-03-2024` (fecha completa)
+
+🏷️ *Etiquetas:*
+• Agregar: `@trabajo @personal @urgente`
+• Crear nueva: `ct nombreetiqueta`
+• Ver todas: `tags` o `etiquetas`
+
+📂 *Categorías:*
+• Ver todas: `cat` o `categorias`
+• Usar código corto en el gasto
+
+✅ *Confirmación:*
+Después de enviar un gasto, recibirás botones para *Confirmar* o *Rechazar*.
+
+💡 *Tips:*
+• Si no especificas categoría, usa `x`
+• Las fechas sin año asumen el año actual
+• Los montos con decimales se consideran USD
+
+¿Necesitas ayuda? Envía `tutorial` nuevamente."""

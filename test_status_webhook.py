@@ -3,7 +3,7 @@
 Test script to validate our webhook event classes against real WhatsApp status data.
 """
 
-from app.webhook_events import WhatsAppWebhookEvent, MessageEvent, StatusEvent
+from app.webhooks.models import WhatsAppWebhookEvent, MessageEvent, StatusEvent
 from pydantic import ValidationError
 import json
 
