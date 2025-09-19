@@ -319,8 +319,13 @@ class Expense(Base, TimestampMixin):
     )
 
     def __str__(self):
-        tags = f" tags [{' '.join(tag.name for tag in self.tags)}]" if self.tags else ""
-        return f"{self.currency} {self.amount} - {self.description or 'No description'}{tags}"
+        text = f"""💵 Monto: *CLP {self.amount}*
+📁 Categoría: *{self.category}*
+📝 Descripción: *{self.description}*
+🏷️ Etiquetas: *{', '.join(tag.name for tag in self.tags) if self.tags else "Sin etiquetas"}*
+📅 Fecha: *{self.expense_date.strftime('%d/%m/%Y')}*"""
+        return text
+    
 
 
 class Tag(Base, TimestampMixin):

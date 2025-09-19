@@ -71,6 +71,7 @@ class MessageHandler:
             message_log.status = "failed"
             message_log.error = str(e)
             self.db.commit()
+            WhatsAppSender.send_message(phoneNumber, "Ocurrió un error procesando tu mensaje. Intenta nuevamente.")
             raise
 
     def get_or_create_user(self, phoneNumber):
