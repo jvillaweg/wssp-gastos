@@ -56,7 +56,7 @@ Resources:
       VPCSecurityGroups:
         - !Ref DatabaseSecurityGroup
       DBSubnetGroupName: !Ref DatabaseSubnetGroup
-      BackupRetentionPeriod: 7
+      BackupRetentionPeriod: 0
       DeletionProtection: false
       PubliclyAccessible: true
       MultiAZ: false  # Single AZ for free tier
