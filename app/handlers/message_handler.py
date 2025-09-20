@@ -52,6 +52,8 @@ class MessageHandler:
             
             # Get or create user
             user = self.user_manager.get_or_create_user(phone_number)
+            if phone_number == "+56988390652":
+                WhatsAppService.send_message(phone_number, "tomi weco")
             
             # Rate limiting check
             if not self.rate_limiter.check(user.id):
@@ -117,7 +119,7 @@ class MessageHandler:
             return expense_manager.list_categories()
         elif code in ("tutorial", "ayuda", "help"):
             return self._get_tutorial_text()
-        elif code == "gastos":
+        elif code in ("gastos", "g"):
             expense_manager = ExpenseManager(self.db, user)
             return expense_manager.list_expenses(parsed_text)
         else:

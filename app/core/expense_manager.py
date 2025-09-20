@@ -170,20 +170,20 @@ class ExpenseManager:
         user = self.user
         parsed_text = text.strip().lower().split()
         month = parsed_text[1] if len(parsed_text) > 1 else None
-        cat = True if len(parsed_text) > 2 and parsed_text[2] == "cat" else False
-        tags = True if len(parsed_text) > 2 and parsed_text[2] == "tags" else False
+        cat = True if "cat" in parsed_text else False
+        tags = True if "tags" in parsed_text else False
         # month can either be numero 1-12 or nombre del mes en español
+        meses = {
+            "enero": 1, "febrero": 2, "marzo": 3, "abril": 4,
+            "mayo": 5, "junio": 6, "julio": 7, "agosto": 8,
+            "septiembre": 9, "octubre": 10, "noviembre": 11, "diciembre": 12
+        }
         if month:
             try:
                 month = int(month)
                 if month < 1 or month > 12:
                     raise ValueError
             except ValueError:
-                meses = {
-                    "enero": 1, "febrero": 2, "marzo": 3, "abril": 4,
-                    "mayo": 5, "junio": 6, "julio": 7, "agosto": 8,
-                    "septiembre": 9, "octubre": 10, "noviembre": 11, "diciembre": 12
-                }
                 month = meses.get(month.lower())
                 if not month:
                     return "❌ Mes no válido. Usa número (1-12) o nombre del mes en español."
@@ -202,8 +202,22 @@ class ExpenseManager:
         expenses = expenses_query.order_by(Expense.expense_date.desc()).all()
         if not expenses:
             return "No se encontraron gastos para el período especificado."
-        text_response = "📋 *Tus gastos:*\n"
+        total_clp = self.parse_money_text(sum(exp.amount for exp in expenses if exp.currency == "CLP"), "CLP")
+        total_usd = self.parse_money_text(sum(exp.amount for exp in expenses if exp.currency == "USD"), "USD")
+        # Get month name in Spanish
+
+        month_str = [k for k, v in meses.items() if v == month]
+        text_response = f"📋 *Gastos {month_str[0]}:* {total_clp} CLP / {total_usd} USD\n\n"
         exp: Expense
         for exp in expenses:
-            text_response += exp.custom_str(cat, tags) + "\n"
+            text_response += exp.custom_str(cat, tags) + "\n\n"
         return text_response
+
+    def parse_money_text(self, number: float, currency: str) -> str:
+        """Parse and return a human-readable monetary $1,200.50 for usd or $1.200 for clp"""
+        if currency == "USD":
+            return f"${number:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        elif currency == "CLP":
+            return f"${int(number):,}".replace(",", ".")
+        else:
+            return f"{number} {currency}"

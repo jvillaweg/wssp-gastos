@@ -326,7 +326,6 @@ class Expense(Base, TimestampMixin):
 📅 Fecha: *{self.expense_date.strftime('%d/%m/%Y')}*"""
         return text
     
-    @property
     def custom_str(self, include_category=True, include_tags=True) -> str:
         parts = [f"💵 Monto: *{self.currency} {self.amount}*"]
         if include_category:
