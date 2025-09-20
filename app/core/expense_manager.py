@@ -164,3 +164,46 @@ class ExpenseManager:
                 except ValueError:
                     continue
         return text, datetime.datetime.now().isoformat()
+
+    def list_expenses(self, text: str) -> str:
+        """List expenses for the user based on the provided text."""
+        user = self.user
+        parsed_text = text.strip().lower().split()
+        month = parsed_text[1] if len(parsed_text) > 1 else None
+        cat = True if len(parsed_text) > 2 and parsed_text[2] == "cat" else False
+        tags = True if len(parsed_text) > 2 and parsed_text[2] == "tags" else False
+        # month can either be numero 1-12 or nombre del mes en español
+        if month:
+            try:
+                month = int(month)
+                if month < 1 or month > 12:
+                    raise ValueError
+            except ValueError:
+                meses = {
+                    "enero": 1, "febrero": 2, "marzo": 3, "abril": 4,
+                    "mayo": 5, "junio": 6, "julio": 7, "agosto": 8,
+                    "septiembre": 9, "octubre": 10, "noviembre": 11, "diciembre": 12
+                }
+                month = meses.get(month.lower())
+                if not month:
+                    return "❌ Mes no válido. Usa número (1-12) o nombre del mes en español."
+        expenses_query = self.db.query(Expense).filter(Expense.user_id == user.id)
+        if month:
+            current_year = datetime.datetime.now().year
+            start_date = datetime.datetime(current_year, month, 1)
+            if month == 12:
+                end_date = datetime.datetime(current_year + 1, 1, 1)
+            else:
+                end_date = datetime.datetime(current_year, month + 1, 1)
+            expenses_query = expenses_query.filter(
+                Expense.expense_date >= start_date,
+                Expense.expense_date < end_date
+            )
+        expenses = expenses_query.order_by(Expense.expense_date.desc()).all()
+        if not expenses:
+            return "No se encontraron gastos para el período especificado."
+        text_response = "📋 *Tus gastos:*\n"
+        exp: Expense
+        for exp in expenses:
+            text_response += exp.custom_str(cat, tags) + "\n"
+        return text_response

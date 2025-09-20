@@ -326,6 +326,17 @@ class Expense(Base, TimestampMixin):
 📅 Fecha: *{self.expense_date.strftime('%d/%m/%Y')}*"""
         return text
     
+    @property
+    def custom_str(self, include_category=True, include_tags=True) -> str:
+        parts = [f"💵 Monto: *{self.currency} {self.amount}*"]
+        if include_category:
+            parts.append(f"📁 Categoría: *{self.category}*")
+        parts.append(f"📝 Descripción: *{self.description}*")
+        if include_tags:
+            parts.append(f"🏷️ Etiquetas: *{', '.join(tag.name for tag in self.tags) if self.tags else 'Sin etiquetas'}*")
+        parts.append(f"📅 Fecha: *{self.expense_date.strftime('%d/%m/%Y')}*")
+        return "\n".join(parts)
+    
 
 
 class Tag(Base, TimestampMixin):

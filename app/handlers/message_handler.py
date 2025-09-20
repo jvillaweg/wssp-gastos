@@ -117,6 +117,9 @@ class MessageHandler:
             return expense_manager.list_categories()
         elif code in ("tutorial", "ayuda", "help"):
             return self._get_tutorial_text()
+        elif code == "gastos":
+            expense_manager = ExpenseManager(self.db, user)
+            return expense_manager.list_expenses(parsed_text)
         else:
             # Handle expense creation
             expense_manager = ExpenseManager(self.db, user)
