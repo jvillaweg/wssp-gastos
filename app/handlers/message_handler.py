@@ -108,13 +108,7 @@ class MessageHandler:
         items = parsed_text.split()
         code = items[0].lower()
         
-        if code == "ct":
-            tag_manager = TagManager(self.db)
-            return tag_manager.create_tag(items[1])
-        elif code in ("tags", "etiquetas"):
-            tag_manager = TagManager(self.db)
-            return tag_manager.list_tags()
-        elif code in ("cat", "category", "categoria", "categories", "categorias"):
+        if code in ("cat", "category", "categoria", "categories", "categorias"):
             expense_manager = ExpenseManager(self.db, user)
             return expense_manager.list_categories()
         elif code in ("tutorial", "ayuda", "help"):
@@ -146,13 +140,18 @@ Envía: `[monto] [categoría] [descripción] [fecha] [@etiquetas]`
 • `15/03/2024` o `15-03-2024` (fecha completa)
 
 🏷️ *Etiquetas:*
-• Agregar: `@trabajo @personal @urgente`
-• Crear nueva: `ct nombreetiqueta`
-• Ver todas: `tags` o `etiquetas`
+• Agregar al gasto: `@trabajo @personal @urgente`
 
-📂 *Categorías:*
-• Ver todas: `cat` o `categorias`
-• Usar código corto o nombre en el gasto
+📂 *Categorías disponibles:*
+• Ver todas: `cat`, `categoria`, `categories` o `categorias`
+
+📊 *Ver gastos:*
+• Listar gastos: `gastos` o `g`
+
+💬 *Comandos útiles:*
+• Ayuda: `tutorial`, `ayuda` o `help`
+• Categorías: `cat` o `categorias`
+• Ver gastos: `gastos` o `g`
 
 ✅ *Confirmación:*
 Después de enviar un gasto, recibirás botones para *Confirmar* o *Rechazar*.
@@ -161,5 +160,6 @@ Después de enviar un gasto, recibirás botones para *Confirmar* o *Rechazar*.
 • Si no especificas categoría, usa `x`
 • Las fechas sin año asumen el año actual
 • Los montos con decimales se consideran USD
+• El bot responde a botones interactivos para confirmar gastos
 
 ¡Empieza a registrar tus gastos ahora! 💸"""
