@@ -13,7 +13,7 @@ class ExpenseManager:
     def __init__(self, db, user: User):
         self.db = db
         self.user = user
-        self.tag_manager = TagManager(db)
+        self.tag_manager = TagManager(db, user)
     
     def list_categories(self) -> str:
         """List all available categories."""
@@ -167,43 +167,82 @@ class ExpenseManager:
 
     def list_expenses(self, text: str) -> str:
         """List expenses for the user based on the provided text."""
-        user = self.user
         text = text.strip().lower()
         text, tags = self._split_text_and_tag(text)
 
         if tags:
-            expenses_query = self.db.query(Expense).filter(Expense.user_id == user.id)
-            expenses_query = expenses_query.join(Expense.tags).filter(Tag.name.in_(tags))
-            expenses = expenses_query.order_by(Expense.expense_date.desc()).all()
-            if not expenses:
-                return "No se encontraron gastos con las etiquetas especificadas."
-            total_clp = self.parse_money_text(sum(exp.amount for exp in expenses if exp.currency == "CLP"), "CLP")
-            total_usd = self.parse_money_text(sum(exp.amount for exp in expenses if exp.currency == "USD"), "USD")
-            text_response = f"📋 *Gastos con etiquetas {', '.join(tags)}:* {total_clp} CLP / {total_usd} USD\n\n"
-            exp: Expense
-            for exp in expenses:
-                text_response += exp.custom_str(cat=False, tags=True) + "\n\n"
-            return text_response
+            return self._list_expenses_by_tags(tags)
+        else:
+            return self._list_expenses_by_month(text)
+
+    def _list_expenses_by_tags(self, tags: List[str]) -> str:
+        """List expenses filtered by tags."""
+        expenses_query = self.db.query(Expense).filter(Expense.user_id == self.user.id)
+        expenses_query = expenses_query.join(Expense.tags).filter(Tag.name.in_(tags))
+        expenses = expenses_query.order_by(Expense.expense_date.desc()).all()
+        
+        if not expenses:
+            return "No se encontraron gastos con las etiquetas especificadas."
+        
+        total_clp, total_usd = self._calculate_totals(expenses)
+        header = f"📋 *Gastos con etiquetas {', '.join(tags)}:* {total_clp} CLP / {total_usd} USD\n\n"
+        
+        expenses_list = ""
+        for expense in expenses:
+            expenses_list += expense.custom_str(include_category=False, include_tags=True) + "\n\n"
+        
+        return header + expenses_list
+
+    def _list_expenses_by_month(self, text: str) -> str:
+        """List expenses filtered by month and display options."""
         items = text.split()
-        month = items[1] if len(items) > 1 else None
-        cat = True if "cat" in items else False
-        tags = True if "tags" in items else False
-        # month can either be numero 1-12 or nombre del mes en español
+        month_input = items[1] if len(items) > 1 else None
+        display_options = self._parse_display_options(items)
+        
+        month = self._parse_month(month_input) if month_input else None
+        if month_input and month is None:
+            return "❌ Mes no válido. Usa número (1-12) o nombre del mes en español."
+        
+        expenses = self._get_expenses_by_month(month)
+        if not expenses:
+            return "No se encontraron gastos para el período especificado."
+        
+        total_clp, total_usd = self._calculate_totals(expenses)
+        header = self._build_month_header(month, total_clp, total_usd)
+        
+        expenses_list = ""
+        for expense in expenses:
+            expenses_list += expense.custom_str(display_options["cat"], display_options["tags"]) + "\n\n"
+        
+        return header + expenses_list
+
+    def _parse_display_options(self, items: List[str]) -> dict:
+        """Parse display options from command items."""
+        return {
+            "cat": "cat" in items,
+            "tags": "tags" in items
+        }
+
+    def _parse_month(self, month_input: str) -> Optional[int]:
+        """Parse month from string input (number or Spanish name)."""
         meses = {
             "enero": 1, "febrero": 2, "marzo": 3, "abril": 4,
             "mayo": 5, "junio": 6, "julio": 7, "agosto": 8,
             "septiembre": 9, "octubre": 10, "noviembre": 11, "diciembre": 12
         }
-        if month:
-            try:
-                month = int(month)
-                if month < 1 or month > 12:
-                    raise ValueError
-            except ValueError:
-                month = meses.get(month.lower())
-                if not month:
-                    return "❌ Mes no válido. Usa número (1-12) o nombre del mes en español."
-        expenses_query = self.db.query(Expense).filter(Expense.user_id == user.id)
+        
+        try:
+            month = int(month_input)
+            if 1 <= month <= 12:
+                return month
+            return None
+        except ValueError:
+            return meses.get(month_input.lower())
+
+    def _get_expenses_by_month(self, month: Optional[int]) -> List[Expense]:
+        """Get expenses filtered by month."""
+        expenses_query = self.db.query(Expense).filter(Expense.user_id == self.user.id)
+        
         if month:
             current_year = datetime.datetime.now().year
             start_date = datetime.datetime(current_year, month, 1)
@@ -211,23 +250,36 @@ class ExpenseManager:
                 end_date = datetime.datetime(current_year + 1, 1, 1)
             else:
                 end_date = datetime.datetime(current_year, month + 1, 1)
+            
             expenses_query = expenses_query.filter(
                 Expense.expense_date >= start_date,
                 Expense.expense_date < end_date
             )
-        expenses = expenses_query.order_by(Expense.expense_date.desc()).all()
-        if not expenses:
-            return "No se encontraron gastos para el período especificado."
-        total_clp = self.parse_money_text(sum(exp.amount for exp in expenses if exp.currency == "CLP"), "CLP")
-        total_usd = self.parse_money_text(sum(exp.amount for exp in expenses if exp.currency == "USD"), "USD")
-        # Get month name in Spanish
+        
+        return expenses_query.order_by(Expense.expense_date.desc()).all()
 
-        month_str = [k for k, v in meses.items() if v == month]
-        text_response = f"📋 *Gastos {month_str[0]}:* {total_clp} CLP / {total_usd} USD\n\n"
-        exp: Expense
-        for exp in expenses:
-            text_response += exp.custom_str(cat, tags) + "\n\n"
-        return text_response
+    def _calculate_totals(self, expenses: List[Expense]) -> Tuple[str, str]:
+        """Calculate and format total amounts for CLP and USD."""
+        total_clp = sum(exp.amount for exp in expenses if exp.currency == "CLP")
+        total_usd = sum(exp.amount for exp in expenses if exp.currency == "USD")
+        
+        formatted_clp = self.parse_money_text(total_clp, "CLP")
+        formatted_usd = self.parse_money_text(total_usd, "USD")
+        
+        return formatted_clp, formatted_usd
+
+    def _build_month_header(self, month: Optional[int], total_clp: str, total_usd: str) -> str:
+        """Build header for month-based expense listing."""
+        if month:
+            meses = {
+                1: "enero", 2: "febrero", 3: "marzo", 4: "abril",
+                5: "mayo", 6: "junio", 7: "julio", 8: "agosto",
+                9: "septiembre", 10: "octubre", 11: "noviembre", 12: "diciembre"
+            }
+            month_name = meses[month]
+            return f"📋 *Gastos {month_name}:* {total_clp} CLP / {total_usd} USD\n\n"
+        else:
+            return f"📋 *Gastos:* {total_clp} CLP / {total_usd} USD\n\n"
 
     def parse_money_text(self, number: float, currency: str) -> str:
         """Parse and return a human-readable monetary $1,200.50 for usd or $1.200 for clp"""
