@@ -122,6 +122,16 @@ class MessageHandler:
         elif code in ("gastos", "g"):
             expense_manager = ExpenseManager(self.db, user)
             return expense_manager.list_expenses(parsed_text)
+        elif code in ("resumen", "summary", "total"):
+            expense_manager = ExpenseManager(self.db, user)
+            return expense_manager.get_summary(parsed_text)
+        elif code in ("borrar", "delete", "eliminar", "undo", "d"):
+            expense_manager = ExpenseManager(self.db, user)
+            return expense_manager.delete_last_expense()
+        elif code in ("buscar", "search", "encontrar", "find", "f"):
+            expense_manager = ExpenseManager(self.db, user)
+            search_term = " ".join(items[1:]) if len(items) > 1 else ""
+            return expense_manager.search_expenses(search_term)
         else:
             # Handle expense creation
             expense_manager = ExpenseManager(self.db, user)
@@ -152,20 +162,49 @@ Envía: `[monto] [categoría] [descripción] [fecha] [@etiquetas]`
 • Ver todas: `cat`, `categoria`, `categories` o `categorias`
 
 📊 *Ver gastos:*
-• Listar gastos: `gastos` o `g`
+• Todos: `gastos` o `g`
+• Por mes: `gastos enero` o `gastos 3`
+• Con etiquetas: `gastos @trabajo`
+• Con opciones: `gastos cat tags` (mostrar categorías y etiquetas)
 
-💬 *Comandos útiles:*
-• Ayuda: `tutorial`, `ayuda` o `help`
-• Categorías: `cat` o `categorias`
-• Ver gastos: `gastos` o `g`
+📈 *Resúmenes:*
+• Hoy: `resumen` o `resumen hoy`
+• Semanal: `resumen semana`
+• Mensual: `resumen mes` (mes actual)
+• Mes específico: `resumen mes enero` o `resumen mes 3`
 
-✅ *Confirmación:*
+🔍 *Buscar gastos:*
+• Por descripción: `buscar almuerzo`
+• Por categoría: `buscar comida`
+• Por monto: `buscar 5000`
+
+🗑️ *Eliminar último gasto:*
+• `borrar`, `delete`, `eliminar` o `undo`
+
+🏷️ *Gestión de etiquetas:*
+• Ver etiquetas: `tags` o `etiquetas`
+• Crear etiqueta: `tags create nombre`
+• Eliminar etiqueta: `tags delete nombre`
+
+💬 *Comandos principales:*
+• `tutorial` / `ayuda` / `help` - Esta ayuda
+• `cat` - Ver categorías
+• `gastos` / `g` - Listar gastos
+• `resumen` - Resumen diario
+• `resumen mes [mes]` - Resumen mensual
+• `buscar [término]` - Buscar gastos
+• `borrar` - Eliminar último gasto
+• `tags` - Ver/gestionar etiquetas
+
+✅ *Confirmación de gastos:*
 Después de enviar un gasto, recibirás botones para *Confirmar* o *Rechazar*.
 
-💡 *Tips:*
+💡 *Tips útiles:*
 • Si no especificas categoría, usa `x`
 • Las fechas sin año asumen el año actual
 • Los montos con decimales se consideran USD
-• El bot responde a botones interactivos para confirmar gastos
+• Puedes usar múltiples etiquetas: `@trabajo @urgente`
+• Los resúmenes muestran totales y estadísticas detalladas
+• La búsqueda funciona en descripciones, categorías y montos
 
-¡Empieza a registrar tus gastos ahora! 💸"""
+🚀 ¡Empieza a registrar tus gastos ahora! 💸"""

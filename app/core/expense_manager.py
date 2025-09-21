@@ -1,5 +1,6 @@
 import re
 import datetime
+from datetime import timedelta
 from typing import List, Optional, Tuple
 from app.models import Category, Expense, Tag, User
 from app.core.tag_manager import TagManager
@@ -280,6 +281,257 @@ class ExpenseManager:
             return f"📋 *Gastos {month_name}:* {total_clp} CLP / {total_usd} USD\n\n"
         else:
             return f"📋 *Gastos:* {total_clp} CLP / {total_usd} USD\n\n"
+
+    def get_summary(self, text: str = "day") -> str:
+        """Get summary of expenses for different periods (day, week, month)."""
+        now = datetime.datetime.now()
+        items = text.strip().lower().split()
+        period = items[1] if items else "day"
+        
+        if period in ["day", "hoy", "today", "diario"]:
+            return self._get_daily_summary(now)
+        elif period in ["week", "semana", "semanal"]:
+            return self._get_weekly_summary(now)
+        elif period in ["month", "mes", "mensual"]:
+            # Check if a specific month is provided
+            month_input = items[2] if len(items) > 2 else None
+            target_month = self._parse_month(month_input) if month_input else now.month
+            target_year = now.year
+            
+            if month_input and target_month is None:
+                return "❌ Mes no válido. Usa número (1-12) o nombre del mes en español."
+            
+            return self._get_monthly_summary(now, target_month, target_year)
+        else:
+            return "❌ Período no válido. Usa: 'hoy', 'semana' o 'mes [mes_opcional]'"
+
+    def _get_daily_summary(self, date: datetime.datetime) -> str:
+        """Get summary for a specific day."""
+        start_date = date.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = start_date + timedelta(days=1)
+        
+        expenses = self._get_expenses_by_date_range(start_date, end_date)
+        
+        if not expenses:
+            return "📅 *Resumen del día:*\nNo tienes gastos registrados hoy."
+        
+        total_clp, total_usd = self._calculate_totals(expenses)
+        expense_count = len(expenses)
+        
+        # Get top category
+        categories = {}
+        for expense in expenses:
+            cat_name = expense.category.name if expense.category else "Sin categoría"
+            categories[cat_name] = categories.get(cat_name, 0) + expense.amount
+        
+        top_category = max(categories.items(), key=lambda x: x[1]) if categories else ("N/A", 0)
+        
+        summary = f"📅 *Resumen del día - {date.strftime('%d/%m/%Y')}:*\n\n"
+        summary += f"💰 Total: {total_clp} CLP / {total_usd} USD\n"
+        summary += f"📊 Cantidad de gastos: {expense_count}\n"
+        summary += f"🏆 Categoría principal: {top_category[0]}\n\n"
+        
+        # Show last 3 expenses
+        summary += "*Últimos gastos:*\n"
+        for expense in expenses[:3]:
+            summary += f"• {expense.custom_str(include_category=True, include_tags=False)}\n"
+        
+        if len(expenses) > 3:
+            summary += f"\n_...y {len(expenses) - 3} gastos más_"
+        
+        return summary
+
+    def _get_weekly_summary(self, date: datetime.datetime) -> str:
+        """Get summary for the current week."""
+        # Get Monday of current week
+        monday = date - timedelta(days=date.weekday())
+        start_date = monday.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = start_date + timedelta(days=7)
+        
+        expenses = self._get_expenses_by_date_range(start_date, end_date)
+        
+        if not expenses:
+            return "📅 *Resumen semanal:*\nNo tienes gastos registrados esta semana."
+        
+        total_clp, total_usd = self._calculate_totals(expenses)
+        expense_count = len(expenses)
+        
+        # Calculate daily average
+        daily_avg_clp = sum(exp.amount for exp in expenses if exp.currency == "CLP") / 7
+        daily_avg_usd = sum(exp.amount for exp in expenses if exp.currency == "USD") / 7
+        
+        # Get category breakdown
+        categories = {}
+        for expense in expenses:
+            cat_name = expense.category.name if expense.category else "Sin categoría"
+            if cat_name not in categories:
+                categories[cat_name] = {"clp": 0, "usd": 0, "count": 0}
+            categories[cat_name][expense.currency.lower()] += expense.amount
+            categories[cat_name]["count"] += 1
+        
+        summary = f"📅 *Resumen semanal - {start_date.strftime('%d/%m')} al {end_date.strftime('%d/%m')}:*\n\n"
+        summary += f"💰 Total: {total_clp} CLP / {total_usd} USD\n"
+        summary += f"📊 Cantidad de gastos: {expense_count}\n"
+        summary += f"📈 Promedio diario: {self.parse_money_text(daily_avg_clp, 'CLP')} CLP / {self.parse_money_text(daily_avg_usd, 'USD')} USD\n\n"
+        
+        summary += "*Gastos por categoría:*\n"
+        for cat_name, amounts in sorted(categories.items(), key=lambda x: x[1]["clp"] + x[1]["usd"], reverse=True):
+            cat_clp = self.parse_money_text(amounts["clp"], "CLP")
+            cat_usd = self.parse_money_text(amounts["usd"], "USD")
+            summary += f"• {cat_name}: {cat_clp} CLP / {cat_usd} USD ({amounts['count']} gastos)\n"
+        
+        return summary
+
+    def _get_monthly_summary(self, date: datetime.datetime, target_month: int = None, target_year: int = None) -> str:
+        """Get summary for a specific month."""
+        if target_month is None:
+            target_month = date.month
+        if target_year is None:
+            target_year = date.year
+            
+        start_date = datetime.datetime(target_year, target_month, 1, 0, 0, 0, 0)
+        if target_month == 12:
+            end_date = datetime.datetime(target_year + 1, 1, 1, 0, 0, 0, 0)
+        else:
+            end_date = datetime.datetime(target_year, target_month + 1, 1, 0, 0, 0, 0)
+        
+        expenses = self._get_expenses_by_date_range(start_date, end_date)
+        
+        month_name = self._get_month_name(target_month)
+        
+        if not expenses:
+            return f"📅 *Resumen mensual:*\nNo tienes gastos registrados en {month_name} {target_year}."
+        
+        total_clp, total_usd = self._calculate_totals(expenses)
+        expense_count = len(expenses)
+        
+        # Calculate daily average
+        days_in_month = (end_date - start_date).days
+        daily_avg_clp = sum(exp.amount for exp in expenses if exp.currency == "CLP") / days_in_month
+        daily_avg_usd = sum(exp.amount for exp in expenses if exp.currency == "USD") / days_in_month
+        
+        # Get category breakdown
+        categories = {}
+        for expense in expenses:
+            cat_name = expense.category.name if expense.category else "Sin categoría"
+            if cat_name not in categories:
+                categories[cat_name] = {"clp": 0, "usd": 0, "count": 0}
+            categories[cat_name][expense.currency.lower()] += expense.amount
+            categories[cat_name]["count"] += 1
+        
+        summary = f"📅 *Resumen mensual - {month_name} {target_year}:*\n\n"
+        summary += f"💰 Total: {total_clp} CLP / {total_usd} USD\n"
+        summary += f"📊 Cantidad de gastos: {expense_count}\n"
+        summary += f"📈 Promedio diario: {self.parse_money_text(daily_avg_clp, 'CLP')} CLP / {self.parse_money_text(daily_avg_usd, 'USD')} USD\n\n"
+        
+        summary += "*Top 5 categorías:*\n"
+        top_categories = sorted(categories.items(), key=lambda x: x[1]["clp"] + x[1]["usd"], reverse=True)[:5]
+        for cat_name, amounts in top_categories:
+            cat_clp = self.parse_money_text(amounts["clp"], "CLP")
+            cat_usd = self.parse_money_text(amounts["usd"], "USD")
+            summary += f"• {cat_name}: {cat_clp} CLP / {cat_usd} USD ({amounts['count']} gastos)\n"
+        
+        return summary
+
+    def delete_last_expense(self) -> str:
+        """Delete the most recent expense for the user."""
+        last_expense = (
+            self.db.query(Expense)
+            .filter(Expense.user_id == self.user.id)
+            .order_by(Expense.created_at.desc())
+            .first()
+        )
+        
+        if not last_expense:
+            return "❌ No tienes gastos para eliminar."
+        
+        expense_info = str(last_expense)
+        expense_status = last_expense.status
+        
+        self.db.delete(last_expense)
+        self.db.commit()
+        
+        return f"🗑️ *Último gasto eliminado:*\n{expense_info}\n\n✅ El gasto ha sido eliminado de tus registros."
+
+    def search_expenses(self, search_term: str) -> str:
+        """Search expenses by description, category, or amount."""
+        if not search_term or len(search_term.strip()) < 2:
+            return "❌ El término de búsqueda debe tener al menos 2 caracteres."
+        
+        search_term = search_term.strip().lower()
+        
+        # Search in multiple fields
+        expenses_query = self.db.query(Expense).filter(Expense.user_id == self.user.id)
+        
+        # Search by description
+        description_results = expenses_query.filter(
+            Expense.description.ilike(f"%{search_term}%")
+        )
+        
+        # Search by category name
+        category_results = expenses_query.join(Category, Expense.category_id == Category.id).filter(
+            Category.name.ilike(f"%{search_term}%")
+        )
+        
+        # Search by amount (if search term is numeric)
+        amount_results = []
+        try:
+            search_amount = float(search_term.replace(",", "."))
+            amount_results = expenses_query.filter(Expense.amount == search_amount)
+        except ValueError:
+            pass
+        
+        # Combine all results and remove duplicates
+        all_results = set()
+        for result_set in [description_results, category_results, amount_results]:
+            if result_set:
+                all_results.update(result_set.all())
+        
+        expenses = list(all_results)
+        expenses.sort(key=lambda x: x.expense_date, reverse=True)
+        
+        if not expenses:
+            return f"❌ No se encontraron gastos que contengan '{search_term}'."
+        
+        total_clp, total_usd = self._calculate_totals(expenses)
+        result_count = len(expenses)
+        
+        header = f"🔍 *Resultados para '{search_term}':*\n"
+        header += f"📊 {result_count} gasto{'s' if result_count != 1 else ''} encontrado{'s' if result_count != 1 else ''}\n"
+        header += f"💰 Total: {total_clp} CLP / {total_usd} USD\n\n"
+        
+        expenses_list = ""
+        # Show maximum 10 results
+        for expense in expenses[:10]:
+            expenses_list += expense.custom_str(include_category=True, include_tags=True) + "\n\n"
+        
+        if len(expenses) > 10:
+            expenses_list += f"_...y {len(expenses) - 10} resultados más_\n"
+            expenses_list += "💡 *Tip:* Usa un término más específico para refinar la búsqueda."
+        
+        return header + expenses_list
+
+    def _get_expenses_by_date_range(self, start_date: datetime.datetime, end_date: datetime.datetime) -> List[Expense]:
+        """Get expenses within a date range."""
+        return (
+            self.db.query(Expense)
+            .filter(
+                Expense.user_id == self.user.id,
+                Expense.expense_date >= start_date,
+                Expense.expense_date < end_date
+            )
+            .order_by(Expense.expense_date.desc())
+            .all()
+        )
+
+    def _get_month_name(self, month_number: int) -> str:
+        """Get Spanish month name from month number."""
+        meses = {
+            1: "enero", 2: "febrero", 3: "marzo", 4: "abril",
+            5: "mayo", 6: "junio", 7: "julio", 8: "agosto",
+            9: "septiembre", 10: "octubre", 11: "noviembre", 12: "diciembre"
+        }
+        return meses.get(month_number, "mes desconocido")
 
     def parse_money_text(self, number: float, currency: str) -> str:
         """Parse and return a human-readable monetary $1,200.50 for usd or $1.200 for clp"""

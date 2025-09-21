@@ -11,9 +11,7 @@ class TagManager:
 
     def action(self, action: str, tag_name: str = None) -> str:
         """Perform actions like creating or listing tags."""
-        if action == "create" and tag_name:
-            return self.create_tag(tag_name)
-        elif action == "list":
+        if action == "list":
             return self.list_tags()
         else:
             return "Acción no reconocida. Usa 'create <tag_name>' o 'list'."
