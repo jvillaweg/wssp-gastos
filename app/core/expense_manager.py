@@ -1,7 +1,7 @@
 import re
 import datetime
 from typing import List, Optional, Tuple
-from app.models import Category, Expense, User
+from app.models import Category, Expense, Tag, User
 from app.core.tag_manager import TagManager
 from app.services.whatsapp_service import WhatsAppService
 from app.webhooks.models import Interactive
@@ -168,10 +168,26 @@ class ExpenseManager:
     def list_expenses(self, text: str) -> str:
         """List expenses for the user based on the provided text."""
         user = self.user
-        parsed_text = text.strip().lower().split()
-        month = parsed_text[1] if len(parsed_text) > 1 else None
-        cat = True if "cat" in parsed_text else False
-        tags = True if "tags" in parsed_text else False
+        text = text.strip().lower()
+        text, tags = self._split_text_and_tag(text)
+
+        if tags:
+            expenses_query = self.db.query(Expense).filter(Expense.user_id == user.id)
+            expenses_query = expenses_query.join(Expense.tags).filter(Tag.name.in_(tags))
+            expenses = expenses_query.order_by(Expense.expense_date.desc()).all()
+            if not expenses:
+                return "No se encontraron gastos con las etiquetas especificadas."
+            total_clp = self.parse_money_text(sum(exp.amount for exp in expenses if exp.currency == "CLP"), "CLP")
+            total_usd = self.parse_money_text(sum(exp.amount for exp in expenses if exp.currency == "USD"), "USD")
+            text_response = f"📋 *Gastos con etiquetas {', '.join(tags)}:* {total_clp} CLP / {total_usd} USD\n\n"
+            exp: Expense
+            for exp in expenses:
+                text_response += exp.custom_str(cat=False, tags=True) + "\n\n"
+            return text_response
+        items = text.split()
+        month = items[1] if len(items) > 1 else None
+        cat = True if "cat" in items else False
+        tags = True if "tags" in items else False
         # month can either be numero 1-12 or nombre del mes en español
         meses = {
             "enero": 1, "febrero": 2, "marzo": 3, "abril": 4,

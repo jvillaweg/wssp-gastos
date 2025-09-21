@@ -1,32 +1,31 @@
 from typing import List
-from app.models import Tag
+from app.models import Tag, User
 
 
 class TagManager:
     """Handles tag-related operations."""
     
-    def __init__(self, db):
+    def __init__(self, db, user: User):
         self.db = db
+        self.user = user
+
+    def action(self, action: str, tag_name: str = None) -> str:
+        """Perform actions like creating or listing tags."""
+        if action == "create" and tag_name:
+            return self.create_tag(tag_name)
+        elif action == "list":
+            return self.list_tags()
+        else:
+            return "Acción no reconocida. Usa 'create <tag_name>' o 'list'."
     
     def list_tags(self) -> str:
-        """List all available tags."""
-        tags = self.db.query(Tag).all()
+        """List all tags used by a user."""
+        tags = self.db.query(Tag).join(Tag.expenses).filter_by(user_id=self.user.id).distinct().all()
+        if not tags:
+            return "No hay etiquetas disponibles."
+        
         tag_names = [tag.name for tag in tags]
-        return (
-            "Etiquetas existentes:\n" + ",\n".join(tag_names)
-            if tag_names
-            else "No hay etiquetas existentes."
-        )
-    
-    def create_tag(self, name: str) -> str:
-        """Create a new tag."""
-        existing = self.db.query(Tag).filter_by(name=name).first()
-        if existing:
-            return f"Etiqueta '{name}' ya existe."
-        tag = Tag(name=name)
-        self.db.add(tag)
-        self.db.commit()
-        return f"Etiqueta '{name}' creada."
+        return "Etiquetas existentes:\n" + ", ".join(tag_names)
     
     def get_or_create_tags(self, tag_names: List[str]) -> List[Tag]:
         """Get existing tags or create new ones."""
