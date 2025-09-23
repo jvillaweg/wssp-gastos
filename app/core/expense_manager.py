@@ -522,7 +522,8 @@ class ExpenseManager:
             .filter(
                 Expense.user_id == self.user.id,
                 Expense.expense_date >= start_date,
-                Expense.expense_date < end_date
+                Expense.expense_date < end_date,
+                Expense.status == "confirmed"
             )
             .order_by(Expense.expense_date.desc())
             .all()
