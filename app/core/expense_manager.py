@@ -424,13 +424,17 @@ class ExpenseManager:
         summary += f"📊 Cantidad de gastos: {expense_count}\n"
         summary += f"📈 Promedio diario: {self.parse_money_text(daily_avg_clp, 'CLP')} CLP / {self.parse_money_text(daily_avg_usd, 'USD')} USD\n\n"
         
-        summary += "*Top 5 categorías:*\n"
-        top_categories = sorted(categories.items(), key=lambda x: x[1]["clp"] + x[1]["usd"], reverse=True)[:5]
-        for cat_name, amounts in top_categories:
+        summary += "*Categorías:*\n"
+        for cat_name, amounts in categories.items():
             cat_clp = self.parse_money_text(amounts["clp"], "CLP")
             cat_usd = self.parse_money_text(amounts["usd"], "USD")
-            summary += f"• {cat_name}: {cat_clp} CLP / {cat_usd} USD ({amounts['count']} gastos)\n"
-        
+            summary += f"• {cat_name}: "
+            if amounts["clp"] > 0:
+                summary += f"{cat_clp} CLP"
+            if amounts["usd"] > 0:
+                summary += f"| {cat_usd} USD"
+            summary += f" ({amounts['count']} gastos)\n"
+
         return summary
 
     def delete_last_expense(self) -> str:
