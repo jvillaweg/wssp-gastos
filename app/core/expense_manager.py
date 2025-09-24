@@ -4,6 +4,7 @@ from datetime import timedelta
 from typing import List, Optional, Tuple
 from app.models import Category, Expense, Tag, User
 from app.core.tag_manager import TagManager
+from app.services.db_service import DB
 from app.services.whatsapp_service import WhatsAppService
 from app.webhooks.models import Interactive
 
@@ -12,7 +13,7 @@ class ExpenseManager:
     """Handles expense-related operations and business logic."""
     
     def __init__(self, db, user: User):
-        self.db = db
+        self.db = DB(db)
         self.user = user
         self.tag_manager = TagManager(db, user)
     
@@ -178,7 +179,7 @@ class ExpenseManager:
 
     def _list_expenses_by_tags(self, tags: List[str]) -> str:
         """List expenses filtered by tags."""
-        expenses_query = self.db.query(Expense).filter(Expense.user_id == self.user.id)
+        expenses_query = self.db.get_expenses(self.user.id)
         expenses_query = expenses_query.join(Expense.tags).filter(Tag.name.in_(tags))
         expenses = expenses_query.order_by(Expense.expense_date.desc()).all()
         
