@@ -2,6 +2,9 @@ import re
 import datetime
 from datetime import timedelta
 from typing import List, Optional, Tuple
+from sqlalchemy.orm import Session,Query
+
+
 from app.models import Category, Expense, Tag, User
 from app.core.tag_manager import TagManager
 from app.services.db_service import DB
@@ -11,10 +14,11 @@ from app.webhooks.models import Interactive
 
 class ExpenseManager:
     """Handles expense-related operations and business logic."""
-    
-    def __init__(self, db, user: User):
-        self.db = DB(db)
+
+    def __init__(self, db: Session, user: User):
+        self.db = db
         self.user = user
+        self.expenses: Query[Expense] = DB(db).get_expenses(user.id)
         self.tag_manager = TagManager(db, user)
     
     def list_categories(self) -> str:
@@ -179,8 +183,7 @@ class ExpenseManager:
 
     def _list_expenses_by_tags(self, tags: List[str]) -> str:
         """List expenses filtered by tags."""
-        expenses_query = self.db.get_expenses(self.user.id)
-        expenses_query = expenses_query.join(Expense.tags).filter(Tag.name.in_(tags))
+        expenses_query = self.expenses.join(Expense.tags).filter(Tag.name.in_(tags))
         expenses = expenses_query.order_by(Expense.expense_date.desc()).all()
         
         if not expenses:
@@ -243,7 +246,7 @@ class ExpenseManager:
 
     def _get_expenses_by_month(self, month: Optional[int]) -> List[Expense]:
         """Get expenses filtered by month."""
-        expenses_query = self.db.query(Expense).filter(Expense.user_id == self.user.id)
+        expenses_query = self.expenses
         
         if month:
             current_year = datetime.datetime.now().year
@@ -441,8 +444,7 @@ class ExpenseManager:
     def delete_last_expense(self) -> str:
         """Delete the most recent expense for the user."""
         last_expense = (
-            self.db.query(Expense)
-            .filter(Expense.user_id == self.user.id)
+            self.expenses
             .order_by(Expense.created_at.desc())
             .first()
         )
@@ -451,7 +453,6 @@ class ExpenseManager:
             return "❌ No tienes gastos para eliminar."
         
         expense_info = str(last_expense)
-        expense_status = last_expense.status
         
         self.db.delete(last_expense)
         self.db.commit()
@@ -466,7 +467,7 @@ class ExpenseManager:
         search_term = search_term.strip().lower()
         
         # Search in multiple fields
-        expenses_query = self.db.query(Expense).filter(Expense.user_id == self.user.id)
+        expenses_query = self.expenses
         
         # Search by description
         description_results = expenses_query.filter(
@@ -519,12 +520,10 @@ class ExpenseManager:
     def _get_expenses_by_date_range(self, start_date: datetime.datetime, end_date: datetime.datetime) -> List[Expense]:
         """Get expenses within a date range."""
         return (
-            self.db.query(Expense)
+            self.expenses
             .filter(
-                Expense.user_id == self.user.id,
                 Expense.expense_date >= start_date,
                 Expense.expense_date < end_date,
-                Expense.status == "confirmed"
             )
             .order_by(Expense.expense_date.desc())
             .all()
