@@ -43,7 +43,7 @@ Resources:
       Handler: lambda_handler.handler
       Environment:
         Variables:
-          DATABASE_URL: 'DatabaseConnection'
+          DATABASE_URL: !Ref DatabaseConnection
       Events:
         WebhookGet:
           Type: Api
