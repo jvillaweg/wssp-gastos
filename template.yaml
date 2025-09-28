@@ -31,127 +31,11 @@ Parameters:
   MetaPhoneNumberId:
     Type: String
     Description: Meta WhatsApp phone number ID
-  DatabasePassword:
+  DatabaseConnection:
     Type: String
-    Description: Aurora PostgreSQL master password
+    Description: DB connection string
     NoEcho: true
-    MinLength: 8
 Resources:
-  # RDS PostgreSQL Free Tier Instance
-  PostgreSQLInstance:
-    Type: AWS::RDS::DBInstance
-    DependsOn: 
-      - DatabaseSubnetGroup
-      - DatabaseSecurityGroup
-    Properties:
-      DBInstanceIdentifier: !Sub "wssp-postgres-${AWS::StackName}"
-      DBInstanceClass: db.t3.micro  # Free tier eligible
-      Engine: postgres
-      EngineVersion: '15.7'
-      DBName: wssp
-      MasterUsername: postgres
-      MasterUserPassword: !Ref DatabasePassword
-      AllocatedStorage: 20  # Free tier limit
-      StorageType: gp2
-      VPCSecurityGroups:
-        - !Ref DatabaseSecurityGroup
-      DBSubnetGroupName: !Ref DatabaseSubnetGroup
-      BackupRetentionPeriod: 0
-      DeletionProtection: false
-      PubliclyAccessible: true
-      MultiAZ: false  # Single AZ for free tier
-
-  # VPC for RDS
-  VPC:
-    Type: AWS::EC2::VPC
-    Properties:
-      CidrBlock: 10.0.0.0/16
-      EnableDnsHostnames: true
-      EnableDnsSupport: true
-
-  # Internet Gateway for NAT-less setup
-  InternetGateway:
-    Type: AWS::EC2::InternetGateway
-
-  AttachGateway:
-    Type: AWS::EC2::VPCGatewayAttachment
-    Properties:
-      VpcId: !Ref VPC
-      InternetGatewayId: !Ref InternetGateway
-
-  # Public subnets for Lambda (cheaper than NAT Gateway)
-  PublicSubnet1:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.1.0/24
-      AvailabilityZone: !Select [0, !GetAZs '']
-      MapPublicIpOnLaunch: true
-
-  PublicSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.2.0/24
-      AvailabilityZone: !Select [1, !GetAZs '']
-      MapPublicIpOnLaunch: true
-
-  # Route table for public subnets
-  PublicRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref VPC
-
-  PublicRoute:
-    Type: AWS::EC2::Route
-    DependsOn: AttachGateway
-    Properties:
-      RouteTableId: !Ref PublicRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref InternetGateway
-
-  PublicSubnet1RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PublicSubnet1
-      RouteTableId: !Ref PublicRouteTable
-
-  PublicSubnet2RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PublicSubnet2
-      RouteTableId: !Ref PublicRouteTable
-
-  DatabaseSubnetGroup:
-    Type: AWS::RDS::DBSubnetGroup
-    Properties:
-      DBSubnetGroupDescription: Subnet group for RDS PostgreSQL
-      SubnetIds:
-        - !Ref PublicSubnet1
-        - !Ref PublicSubnet2
-      Tags:
-        - Key: Name
-          Value: wssp-db-subnet-group
-
-  DatabaseSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Security group for RDS PostgreSQL
-      VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 5432
-          ToPort: 5432
-          CidrIp: 0.0.0.0/0
-          Description: Allow Lambda access from outside VPC
-
-  # Temporary - will remove in next deployment
-  LambdaSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Temporary security group for Lambda (unused)
-      VpcId: !Ref VPC
-
   WhatsAppExpenseAPI:
     Type: AWS::Serverless::Function
     Properties:
@@ -159,7 +43,7 @@ Resources:
       Handler: lambda_handler.handler
       Environment:
         Variables:
-          DATABASE_URL: 'postgresql://postgres:${DatabasePassword}@db.gxuupyqixiltdqoebfva.supabase.co:5432/postgres'
+          DATABASE_URL: 'DatabaseConnection'
       Events:
         WebhookGet:
           Type: Api

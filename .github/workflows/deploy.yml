@@ -53,4 +53,4 @@ jobs:
           MetaAppSecret=${{ secrets.META_APP_SECRET }} \
           MetaAccessToken=${{ secrets.META_ACCESS_TOKEN }} \
           MetaPhoneNumberId=${{ secrets.META_PHONE_NUMBER_ID }} \
-          DatabasePassword=${{ secrets.DATABASE_PASSWORD }}
+          DatabaseConnection=${{ secrets.DATABASE_CONNECTION }}
