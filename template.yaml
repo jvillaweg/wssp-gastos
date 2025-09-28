@@ -159,7 +159,7 @@ Resources:
       Handler: lambda_handler.handler
       Environment:
         Variables:
-          DATABASE_URL: !Sub 'postgresql://postgres:${DatabasePassword}@${PostgreSQLInstance.Endpoint.Address}:5432/wssp'
+          DATABASE_URL: 'postgresql://postgres:${DatabasePassword}@db.gxuupyqixiltdqoebfva.supabase.co:5432/postgres'
       Events:
         WebhookGet:
           Type: Api
