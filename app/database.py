@@ -1,6 +1,9 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import OperationalError
 import os
+import time
+import logging
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -21,12 +24,13 @@ if is_lambda:
         DATABASE_URL,
         pool_size=1,
         max_overflow=0,
-        pool_timeout=5,        # Reduced from 10
-        pool_recycle=1800,     # 30 minutes
+        pool_timeout=10,
+        pool_recycle=300,      # 5 minutes for Lambda
         pool_pre_ping=True,
         connect_args={
-            "connect_timeout": 5,
-            "application_name": "wssp-lambda"
+            "connect_timeout": 10,
+            "application_name": "wssp-lambda",
+            "sslmode": "require"  # Ensure SSL connection
         }
     )
 else:
@@ -44,8 +48,35 @@ else:
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+    """Get database session with retry logic for Lambda cold starts."""
+    max_retries = 3
+    retry_delay = 1
+    
+    for attempt in range(max_retries):
+        try:
+            db = SessionLocal()
+            # Test the connection
+            db.execute("SELECT 1")
+            yield db
+            return
+        except OperationalError as e:
+            if attempt < max_retries - 1:
+                logging.warning(f"Database connection attempt {attempt + 1} failed: {e}")
+                if db:
+                    db.close()
+                time.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+                continue
+            else:
+                logging.error(f"Database connection failed after {max_retries} attempts: {e}")
+                if db:
+                    db.close()
+                raise
+        except Exception as e:
+            logging.error(f"Unexpected database error: {e}")
+            if db:
+                db.close()
+            raise
+        finally:
+            if 'db' in locals():
+                db.close()
