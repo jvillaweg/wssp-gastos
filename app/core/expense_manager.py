@@ -57,9 +57,10 @@ class ExpenseManager:
                 message = f"✅ *¡Gasto confirmado exitosamente!*\n{expense}\n\n¡Tu gasto ha sido registrado correctamente! 💫"
 
             elif instruction == "decline":
-                expense.status = "rejected"
-                self.db.commit()
+                # delete expense
                 message = f"❌ *Gasto rechazado:*\n{expense}\n\nEl gasto ha sido rechazado y no se guardará en tus registros."
+                self.db.delete(expense)
+                self.db.commit()
             else:
                 message = f"⚠️ Acción no reconocida: {instruction}"
 
