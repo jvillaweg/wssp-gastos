@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from app.core.user_manager import UserManager
 from app.core.expense_manager import ExpenseManager
+from app.core.category_manager import CategoryManager
 from app.core.tag_manager import TagManager
 from app.services.rate_limiter import RateLimiter
 from app.services.whatsapp_service import WhatsAppService
@@ -102,13 +103,21 @@ class MessageHandler:
 
     def _handle_text_message(self, text: str, user) -> Optional[str]:
         """Route text messages to appropriate handlers."""
-        parsed_text = text.strip().lower()  
+        stripped_text = text.strip()
+        if not stripped_text:
+            return "❌ El mensaje está vacío."
+
+        parsed_text = stripped_text.lower()
         items = parsed_text.split()
-        code = items[0].lower()
-        
+        if not items:
+            return "❌ El mensaje está vacío."
+        code = items[0]
+
         if code in ("cat", "category", "categoria", "categories", "categorias"):
-            expense_manager = ExpenseManager(self.db, user)
-            return expense_manager.list_categories()
+            category_manager = CategoryManager(self.db, user)
+            original_first_word = stripped_text.split()[0]
+            remainder = stripped_text[len(original_first_word):].strip()
+            return category_manager.handle(remainder)
         elif code in ("tag", "tags", "etiqueta", "etiquetas"):
             tag_manager = TagManager(self.db, user)
             if len(items) > 1:
@@ -158,8 +167,9 @@ Envía: `[monto] [categoría] [descripción] [fecha] [@etiquetas]`
 🏷️ *Etiquetas:*
 • Agregar al gasto: `@trabajo @personal @urgente`
 
-📂 *Categorías disponibles:*
+📂 *Categorías:*
 • Ver todas: `cat`, `categoria`, `categories` o `categorias`
+• Gestionar: `cat help`, `cat c <nombre>`, `cat u <id>`, `cat d <id>`
 
 📊 *Ver gastos:*
 • Todos: `gastos` o `g`

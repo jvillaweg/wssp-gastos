@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session,Query
 
 from app.models import Category, Expense, Tag, User
 from app.core.tag_manager import TagManager
+from app.core.category_manager import CategoryManager
 from app.services.db_service import DB
 from app.services.whatsapp_service import WhatsAppService
 from app.webhooks.models import Interactive
@@ -22,17 +23,10 @@ class ExpenseManager:
         self.tag_manager = TagManager(db, user)
     
     def list_categories(self) -> str:
-        """List all available categories."""
-        categories = self.db.query(Category).all()
-        category_names = [
-            f"{category.name} codigo {category.short_name}" for category in categories
-        ]
-        return (
-            "Categorías existentes:\n" + ",\n".join(category_names)
-            if category_names
-            else "No hay categorías existentes."
-        )
-    
+        """Delegate to CategoryManager to keep backward compatibility."""
+        manager = CategoryManager(self.db, self.user)
+        return manager.list_categories()
+
     def handle_interactive_response(self, interactive: Interactive) -> None:
         """Handle interactive button responses for expense confirmation/rejection."""
         if interactive.type == "button_reply" and interactive.button_reply:
